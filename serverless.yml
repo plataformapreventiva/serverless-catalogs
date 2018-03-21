@@ -1,0 +1,46 @@
+###################################
+###################################
+
+service: Pub-Pub-Serverless
+plugins:
+ - serverless-plugin-existing-s3
+
+provider:
+  name: aws
+  runtime: python3.6
+  stage: dev
+  region: us-west-2
+  role: arn:aws:iam::938975972071:role/service-role/PUB_catalog_role
+#  environment:
+#    variable1: value1
+package:
+  include:
+    - src/
+  exclude:
+     - secrets.yaml 
+functions:
+  MonthlyCatalogPub: #Function name, and script
+    handler: src/pub_handler.handler
+    # memorySize: 512
+    # timeout: 10 
+    # reservedConcurrency: 5
+    # description
+    event:
+      - existingS3:
+          bucket: publicaciones-sedesol 
+          events:
+            - s3:ObjectCreated:Put 
+          rules:
+            - prefix: /catalogo_mensual/catalogo_mensual 
+            - suffix: .csv 
+
+#resources:
+#  Resources:
+#    NewResource:
+#      Type: AWS::S3::Bucket
+#      Properties:
+#        BucketName: my-new-bucket
+#  Outputs:
+#     NewOutput:
+#       Description: "Description for the output"
+#       Value: "Some output value"
