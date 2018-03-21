@@ -1,5 +1,7 @@
-Pub-Publication Catalog service - serverless-lambda
+Pub-Publication Catalog Service - Serverless-Lambda
 ===================================
+
+Registry of Social Beneficiaries (PUB) Monthly Catalog Service Pipeline 
 
 Requirements
 ------------
@@ -26,5 +28,3 @@ Usage
 ## Cleanup
 `serverless remove`
 
-[lambda]: https://aws.amazon.com/lambda/
-[serverless]: https://serverless.com/ 
