@@ -3,6 +3,8 @@ Pub-Publication Catalog Service - Serverless-Lambda
 
 Registry of Social Beneficiaries (PUB) Monthly Catalog Service Pipeline 
 
+
+
 Requirements
 ------------
 
@@ -28,3 +30,7 @@ Usage
 ## Cleanup
 `serverless remove`
 
+TODO()
+------------
+- First lambda function to query Athena for monthly Pub Metadata Update
+- Second lambda function to trigger elasticsearch update 
