@@ -2,37 +2,52 @@
 ###################################
 
 service: Pub-Pub-Serverless
+
 plugins:
- - serverless-plugin-existing-s3
+    - serverless-plugin-existing-s3
+    - serverless-package-python-functions
+
+custom:
+  pkgPyFuncs:
+    #requirementsFile: requirements.txt 
+    #globalRequirements: 
+    #  - ./globalRequirements.txt
+    #globalIncludes: 
+    #  - ./common
+    buildDir: _build 
+    cleanup: true 
+
 
 provider:
-  name: aws
-  runtime: python3.6
-  stage: dev
-  region: us-west-2
-  role: arn:aws:iam::938975972071:role/service-role/PUB_catalog_role
-#  environment:
-#    variable1: value1
-package:
-  include:
-    - src/
-  exclude:
-     - secrets.yaml 
+    name: aws
+    runtime: python3.6
+    # stage: dev
+    region: us-west-2
+    # role: arn:aws:iam::938975972071:role/service-role/PUB_catalog_role
+    iamRoleStatements:
+        - Effect: "Allow"
+          Action:
+              - "*"
+          Resource:
+              Fn::Join:
+                  - ""
+                  - - "arn:aws:s3:::publicaciones-sedesol"
 functions:
-  MonthlyCatalogPub: #Function name, and script
-    handler: src/pub_handler.handler
-    # memorySize: 512
-    # timeout: 10 
-    # reservedConcurrency: 5
-    # description
-    event:
-      - existingS3:
-          bucket: publicaciones-sedesol 
-          events:
-            - s3:ObjectCreated:Put 
-          rules:
-            - prefix: /catalogo_mensual/catalogo_mensual 
-            - suffix: .csv 
+    MonthlyCatalogPub:
+        handler: src/pub_handler.MonthlyCatalogPub
+        event:
+            - existingS3:
+                bucket: publicaciones-sedesol 
+                events:
+                    - s3:ObjectCreated:* 
+                rules:
+                    - prefix: /catalogo_mensual/
+                    - suffix: catalogo_mensual.csv 
+        package:
+            include:
+                - src
+            exclude:
+                - secrets.yaml 
 
 #resources:
 #  Resources:

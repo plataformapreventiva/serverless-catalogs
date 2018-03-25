@@ -54,7 +54,7 @@ indexDoc = {
 }
 
 
-def lambda_handler(event, context):
+def MonthlyCatalogPub(event, context):
     """Lambda Function to update pub catalog index from event.
 	"""
 	print("Received event: " + json.dumps(event, indent=2))

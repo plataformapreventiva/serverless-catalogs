@@ -22,13 +22,13 @@ Usage
 `serverless config credentials --provider aws --key $AWS_ACCESS_KEY_ID --secret $AWS_SECRET_ACCESS_KEY_ID`
 
 ## Deploy the Service
-`serverless deploy -v`
+`sls deploy`
 
-## Deploy the Function
-`serverless deploy function -f hello`
+## Add S3 triggers to the Service
+`sls s3deploy` 
 
 ## Cleanup
-`serverless remove`
+`sls remove`
 
 TODO()
 ------------
