@@ -1,61 +1,63 @@
-###################################
-###################################
-
-service: Pub-Pub-Serverless
+###############################
+###############################
+service: serverlesscatalogs
 
 plugins:
-    - serverless-plugin-existing-s3
-    - serverless-package-python-functions
-
+  - serverless-python-requirements
+    #custom:
+    #  pythonRequirements:
+    #    zip: true
 custom:
-  pkgPyFuncs:
-    #requirementsFile: requirements.txt 
-    #globalRequirements: 
-    #  - ./globalRequirements.txt
-    #globalIncludes: 
-    #  - ./common
-    buildDir: _build 
-    cleanup: true 
+  pythonRequirements:
+    dockerizePip: non-linux
+    pythonBin:  /usr/bin/python3
 
+    #package:
+    #    excludeDevDependencies: true
 
 provider:
-    name: aws
-    runtime: python3.6
-    # stage: dev
-    region: us-west-2
-    # role: arn:aws:iam::938975972071:role/service-role/PUB_catalog_role
-    iamRoleStatements:
-        - Effect: "Allow"
-          Action:
-              - "*"
-          Resource:
-              Fn::Join:
-                  - ""
-                  - - "arn:aws:s3:::publicaciones-sedesol"
-functions:
-    MonthlyCatalogPub:
-        handler: src/pub_handler.MonthlyCatalogPub
-        event:
-            - existingS3:
-                bucket: publicaciones-sedesol 
-                events:
-                    - s3:ObjectCreated:* 
-                rules:
-                    - prefix: /catalogo_mensual/
-                    - suffix: catalogo_mensual.csv 
-        package:
-            include:
-                - src
-            exclude:
-                - secrets.yaml 
+  name: aws
+  runtime: python3.6
+  stage: dev
+  region: us-west-2
+  memorySize: 3008 # Overwrite the default memory size. Default is 1024
+  #role: arn:aws:iam::938975972071:role/service-role/PUB_catalog_role
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "s3:*"
+      Resource:
+        Fn::Join:
+          - ""
+          - - "arn:aws:s3:::"
+            - "Ref" : "serverlesscatalogs"
+            - "/*"
 
-#resources:
-#  Resources:
-#    NewResource:
-#      Type: AWS::S3::Bucket
-#      Properties:
-#        BucketName: my-new-bucket
-#  Outputs:
-#     NewOutput:
-#       Description: "Description for the output"
-#       Value: "Some output value"
+# También poner de dónde consume la lambda
+
+functions:
+  monthlycatalog:
+    handler: pub_handler.CatalogPub
+    events:
+      - s3:
+          bucket: serverlesscatalogs
+          event: s3:ObjectCreated:*
+          rules:
+            - suffix: .csv
+
+resources:
+  Resources:
+    serverlesscatalogs:
+      Type: AWS::S3::Bucket
+      Properties:
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders:
+                - "*"
+              AllowedMethods:
+                - GET
+                - POST
+                - PUT
+                - DELETE
+              AllowedOrigins:
+                - "*"
