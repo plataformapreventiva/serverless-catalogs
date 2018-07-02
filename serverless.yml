@@ -1,6 +1,6 @@
 ###############################
 ###############################
-service: serverlesscatalogs
+service: serverlesscatalogs2
 
 plugins:
   - serverless-python-requirements
@@ -21,19 +21,18 @@ provider:
   stage: dev
   region: us-west-2
   memorySize: 3008 # Overwrite the default memory size. Default is 1024
-  #role: arn:aws:iam::938975972071:role/service-role/PUB_catalog_role
-  iamRoleStatements:
-    - Effect: "Allow"
-      Action:
-        - "s3:*"
-      Resource:
-        Fn::Join:
-          - ""
-          - - "arn:aws:s3:::"
-            - "Ref" : "serverlesscatalogs"
-            - "/*"
-
-# También poner de dónde consume la lambda
+  role: arn:aws:iam::938975972071:role/service-role/PUB_catalog_role
+  #  iamRoleStatements:
+  #    - Effect: "Allow"
+  #      Action:
+  #        - "s3:*"
+  #      Resource:
+  #        Fn::Join:
+  #          - ""
+  #          - - "arn:aws:s3:::"
+  #            - "Ref" : "serverlesscatalogs"
+  #            - "/*"
+  #
 
 functions:
   monthlycatalog:

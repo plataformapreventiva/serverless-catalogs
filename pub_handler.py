@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
 
-import boto3
-import io
-import json
-import urllib
-import csv
-from io import BytesIO
 import argparse
-import http.client
-import os
+import boto3
 import csv
-import json
 import dateutil.parser
+import io
+import http.client
+import json
+import os
+import urllib
 
 from botocore.vendored import requests
+from io import BytesIO
 
 
 s3 = boto3.client('s3')
@@ -51,8 +49,9 @@ indexDoc = {
     }
     }
 
+
 def CatalogPub(event, context):
-    """Lambda Function to update pub catalog index from event.
+    """Lambda Function to update pub catalog index at s3 event.
     """
 
     # Get the object from the event and show its content type
@@ -60,6 +59,7 @@ def CatalogPub(event, context):
     key = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'])
 
     try:
+        # define arguments
         max_rows_disp = "all"
         max_rows= None
         count = 0
@@ -68,14 +68,18 @@ def CatalogPub(event, context):
         to_elastic_string = ""
         datetime_field = ""
         id_column = None
+        # get new db
         response = s3.get_object(Bucket=bucket, Key=key)
         lista = response['Body'].read().split(b'\n')
+
         # TODO() Check body structure
-        # remove old index
+        #  remove old index
         connection = http.client.HTTPConnection(elastic_address)
         connection.request('XDELETE', url='/cuaps-pub')
         if lista[-1] == b'':
             lista = lista[:-1]
+
+        # Data sctructure
         json_struct = '{"cd_dependencia" : "%cd_dependencia%",\n  "cd_programa" : "%cd_programa%",\n  "cd_padron" : "%cd_padron%",\n  "anio" : "%anio%",\n  "iduni" : "%iduni%",\n  "nb_dependencia" : "%nb_dependencia%",\n "nb_subp1" : "%nb_subp1%",\n  "nb_subp2" : "%nb_subp2%",\n  "nb_origen" : "%nb_origen%",\n  "nb_programa" : "%nb_programa%",\n  "cd_origen" : "%cd_origen%",\n  "cuaps_folio" : "%cuaps_folio%",\n  "chr_clave_presupuestal_pro" : "%chr_clave_presupuestal_pro%",\n "derechos_sociales" : "%derechos_sociales%",\n  "tipos_apoyos" : "%tipos_apoyos%"}'
 
         for row in lista:
@@ -92,6 +96,7 @@ def CatalogPub(event, context):
             elif len(row[0]) == 0:    # Empty rows on the end of document
                 print("Found empty rows at the end of document")
                 break
+
             else:
                 pos = 0
                 if os.name == 'nt':
@@ -119,13 +124,18 @@ def CatalogPub(event, context):
                 json_string = json.dumps(index_row) + "\n" + _data + "\n"
                 to_elastic_string += json_string
             count += 1
+
+        # Update ElasticSearch index
         to_elastic_string = to_elastic_string.encode('utf-8')
         connection = http.client.HTTPConnection(elastic_address)
         headers_post = {"Content-type": "application/json", "Accept": "text/plain"}
         connection.request('POST', url=endpoint, headers = headers_post, body=to_elastic_string)
         response = connection.getresponse()
+
         print("Returned status code:", response.status)
         print("Returned status text", response.read())
+
+        # Save json result
         s3.put_object(Body= to_elastic_string,
                 Bucket = "publicaciones-sedesol",
                 Key = "catalogo_cuaps_pub.temporal")
