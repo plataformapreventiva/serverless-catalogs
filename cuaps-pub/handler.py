@@ -13,7 +13,6 @@ import urllib
 from botocore.vendored import requests
 from io import BytesIO
 
-
 s3 = boto3.client('s3')
 endpoint = '/_bulk'
 elastic_address = "search-pp-search-pjomldcgauebmkfa26wkjfiv4y.us-west-2.es.amazonaws.com"
@@ -23,22 +22,22 @@ elastic_type = "catalogo"
 indexDoc = {
     "dataRecord": {
         "properties": {
-            "cd_dependencia" : {"type": "string"},
             "cd_programa" : {"type": "string"},
-            "cd_padron" : {"type": "string"},
-            "anio" : {"type": "string"},
-            "iduni" : {"type": "string"},
-            "nb_dependencia" : {"type": "string"},
-            "nb_subp1" : {"type": "string"},
-            "nb_subp2" : {"type": "string"},
-            "nb_origen" : {"type": "string"},
+            "id_pub" : {"type": "string"},
             "nb_programa" : {"type": "string"},
-            "cd_origen" : {"type": "string"},
-            "cd_cuaps_x" : {"type": "string"},
+            "iduni" : {"type": "string"},
+            "DGAE" : {"type": "string"},
+            "DGAIP" : {"type": "string"},
+            "cd_dependencia" : {"type": "string"},
+            "nb_dependencia" : {"type": "string"},
+            "nb_depen_corto" : {"type": "string"},
+            "anio" : {"type": "string"},
+            "origen" : {"type": "string"},
+            "nb_origen" : {"type": "string"},
+            "origen_dep" : {"type": "string"},
+            "cd_padron" : {"type": "string"},
             "cuaps_folio" : {"type": "string"},
-            "cd_cuaps_y" : {"type": "string"},
-            "chr_clave_presupuestal_pro" : {"type": "string"},
-            "orden_gob" : {"type": "string"},
+            "nb_subp1" : {"type": "string"},
             "derechos_sociales" : {"type": "string"},
             "tipos_apoyos" : {"type": "string"}
         }
@@ -48,7 +47,6 @@ indexDoc = {
         "number_of_replicas": 0
     }
     }
-
 
 def CatalogPub(event, context):
     """Lambda Function to update pub catalog index at s3 event.
@@ -80,8 +78,9 @@ def CatalogPub(event, context):
             lista = lista[:-1]
 
         # Data sctructure
-        json_struct = '{"cd_dependencia" : "%cd_dependencia%",\n  "cd_programa" : "%cd_programa%",\n  "cd_padron" : "%cd_padron%",\n  "anio" : "%anio%",\n  "iduni" : "%iduni%",\n  "nb_dependencia" : "%nb_dependencia%",\n "nb_subp1" : "%nb_subp1%",\n  "nb_subp2" : "%nb_subp2%",\n  "nb_origen" : "%nb_origen%",\n  "nb_programa" : "%nb_programa%",\n  "cd_origen" : "%cd_origen%",\n  "cuaps_folio" : "%cuaps_folio%",\n  "chr_clave_presupuestal_pro" : "%chr_clave_presupuestal_pro%",\n "derechos_sociales" : "%derechos_sociales%",\n  "tipos_apoyos" : "%tipos_apoyos%"}'
-
+        keys =list(indexDoc["dataRecord"]['properties'].keys())
+        values = [ "%"+str(x)+"%" for x in keys]
+        json_struct = str(dict(zip(keys, values))).replace("%',", "%',\n")
         for row in lista:
             row = row.decode('utf-8')
             row = row.split("|")

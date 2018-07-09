@@ -2,18 +2,18 @@
 ###############################
 service: serverlesscatalogs2
 
+package:
+  individually: True
+  exclude:
+    # Exclude everything first.
+    - '**/*'
+
 plugins:
+  - serverless-python-individually
   - serverless-python-requirements
     #custom:
     #  pythonRequirements:
     #    zip: true
-custom:
-  pythonRequirements:
-    dockerizePip: non-linux
-    pythonBin:  /usr/bin/python3
-
-    #package:
-    #    excludeDevDependencies: true
 
 provider:
   name: aws
@@ -35,14 +35,35 @@ provider:
   #
 
 functions:
-  monthlycatalog:
-    handler: pub_handler.CatalogPub
+  cuaps-pub-catalog:
+    handler: cuaps-pub/wrap.handler #.CatalogPub
+    package:
+      include:
+        - cuaps-pub/**
     events:
       - s3:
           bucket: serverlesscatalogs
           event: s3:ObjectCreated:*
           rules:
             - suffix: .csv
+
+#  pub-monthly:
+#    handler: pub-monthly/wrap.handler #.CatalogPub
+#    package:
+#      include:
+#        - pub-monthly/**
+#
+
+custom:
+  pyIndividually:
+    wrap:cuapsFunc: cuaps-pub/handler.catalog_creation
+    wrap:pubFunnc: pub-monthly/handler.catalog_creation
+  pythonRequirements:
+    dockerizePip: non-linux
+    pythonBin:  /usr/bin/python3
+    #package:
+    #    excludeDevDependencies: true
+
 
 resources:
   Resources:
