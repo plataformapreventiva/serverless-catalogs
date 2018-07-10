@@ -1,6 +1,6 @@
 ###############################
 ###############################
-service: serverlesscatalogs2
+service: serverlesscatalogs
 
 package:
   individually: True
@@ -8,35 +8,22 @@ package:
     # Exclude everything first.
     - '**/*'
 
-plugins:
-  - serverless-python-individually
-  - serverless-python-requirements
-    #custom:
-    #  pythonRequirements:
-    #    zip: true
-
 provider:
   name: aws
   runtime: python3.6
   stage: dev
   region: us-west-2
   memorySize: 3008 # Overwrite the default memory size. Default is 1024
-  role: arn:aws:iam::938975972071:role/service-role/PUB_catalog_role
-  #  iamRoleStatements:
-  #    - Effect: "Allow"
-  #      Action:
-  #        - "s3:*"
-  #      Resource:
-  #        Fn::Join:
-  #          - ""
-  #          - - "arn:aws:s3:::"
-  #            - "Ref" : "serverlesscatalogs"
-  #            - "/*"
-  #
+  #role: arn:aws:iam::938975972071:role/service-role/PUB_catalog_role
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+       - "s3:*"
+      Resource: "*"
 
 functions:
-  cuaps-pub-catalog:
-    handler: cuaps-pub/wrap.handler #.CatalogPub
+  cuaps-pub:
+    handler: cuaps-pub/wrap.handler
     package:
       include:
         - cuaps-pub/**
@@ -48,7 +35,7 @@ functions:
             - suffix: .csv
 
 #  pub-monthly:
-#    handler: pub-monthly/wrap.handler #.CatalogPub
+#    handler: pub-monthly/wrap.handler
 #    package:
 #      include:
 #        - pub-monthly/**
@@ -56,14 +43,14 @@ functions:
 
 custom:
   pyIndividually:
-    wrap:cuapsFunc: cuaps-pub/handler.catalog_creation
-    wrap:pubFunnc: pub-monthly/handler.catalog_creation
-  pythonRequirements:
-    dockerizePip: non-linux
-    pythonBin:  /usr/bin/python3
-    #package:
-    #    excludeDevDependencies: true
-
+    wrap:cuaps-pub: cuaps-pub/handler.catalog
+    #wrap:pubFunnc: pub-monthly/handler.catalog_creation
+    #  pythonRequirements:
+    #    zip: true
+    #    dockerizePip: non-linux
+    #    pythonBin:  /usr/bin/python3
+    #    #package:
+    #    #    excludeDevDependencies: true
 
 resources:
   Resources:
@@ -81,3 +68,10 @@ resources:
                 - DELETE
               AllowedOrigins:
                 - "*"
+
+plugins:
+  - serverless-python-individually
+    #- serverless-python-requirements
+    #custom:
+    #  pythonRequirements:
+    #    zip: true

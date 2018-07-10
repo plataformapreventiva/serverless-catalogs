@@ -48,7 +48,7 @@ indexDoc = {
     }
     }
 
-def CatalogPub(event, context):
+def catalog(event, context):
     """Lambda Function to update pub catalog index at s3 event.
     """
 
@@ -124,15 +124,20 @@ def CatalogPub(event, context):
                 to_elastic_string += json_string
             count += 1
 
-        # Update ElasticSearch index
         to_elastic_string = to_elastic_string.encode('utf-8')
         connection = http.client.HTTPConnection(elastic_address)
         headers_post = {"Content-type": "application/json", "Accept": "text/plain"}
+
+        # Remove old index
+        response = requests.delete("http://" + elastic_address + "/" + elastic_index)
+        print("Returned from delete request: ", response)
+
+        # Update ElasticSearch index
         connection.request('POST', url=endpoint, headers = headers_post, body=to_elastic_string)
         response = connection.getresponse()
 
-        print("Returned status code:", response.status)
-        print("Returned status text", response.read())
+        print("Returned status code: ", response.status)
+        print("Returned status text ", response.read())
 
         # Save json result
         s3.put_object(Body= to_elastic_string,
