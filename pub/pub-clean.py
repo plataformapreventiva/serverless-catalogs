@@ -427,7 +427,7 @@ if __name__ == "__main__":
     catalogo = catalogo.select(*catalogo_columns).filter(catalogo.anio == year)
     # Join with catalogo
     print("join")
-    raw_data = raw_data.join(catalogo,
+    raw_data = raw_data.join(broadcast(catalogo),
             raw_data.iduni == catalogo.iduni, 'left').drop(catalogo.iduni)
     # Store with partitions
     print("saving")
