@@ -419,7 +419,6 @@ if __name__ == "__main__":
     raw_data = raw_data.withColumn('iduni',
             new_id_udf2(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
     print("done")
-    print(raw_data.show())
     # Read catalogo
     catalogo_file = 's3://pub-raw/diccionarios/catalogo_programas.csv'
     catalogo = read_catalog(catalogo_file)
@@ -436,7 +435,6 @@ if __name__ == "__main__":
     print(raw_data.show())
     raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).parquet(output_path)
     #raw_data.select(SCHEMA_FULL).write.csv(output_path, compression="gzip")
-    #raw_data.select(SCHEMA_FULL).write.mode('overwrite').parquet(output_path)
-    
+
     # store_partitions(raw_data, variables, input_path, output_path)
 
