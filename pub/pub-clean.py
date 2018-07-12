@@ -13,14 +13,13 @@ from pyspark.sql.types import *
 
 #------------------------------------------------------------------
 ## To run:
-# spark-submit --conf spark.executor.memory=20g
+# spark-submit --conf spark.executor.memory=18g
 # --conf spark.executor.instances=19
-# --conf spark.executor.cores=4
-# --conf spark.driver.cores=1
-# --conf spark.driver.memory=1g
-# --conf spark.yarn.executor.memoryOverhead=1024
-# --conf spark.yarn.driver.memoryOverhead=1024
-# --conf parquet.metadata.read.parallelism=30
+# --conf spark.executor.cores=5
+# --conf spark.driver.cores=3
+# --conf spark.driver.memory=18g
+# --conf spark.yarn.executor.memoryOverhead=11g
+# --conf spark.yarn.driver.memoryOverhead=11g
 # --conf spark.yarn.appMasterEnv.PYSPARK_PYTHON=/usr/bin/python3
 # --conf spark.executorEnv.PYSPARK_PYTHON=/usr/bin/python3
 # pub-clean.py
