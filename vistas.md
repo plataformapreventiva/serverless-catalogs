@@ -39,6 +39,8 @@
 
 * Presupuesto
 
+* Estaría bien mostrar colaboraciones con otras dependencias
+
 ## Descarga del PUB
 
 1. Nominal
