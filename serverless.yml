@@ -7,6 +7,7 @@ package:
   exclude:
     # Exclude everything first.
     - '**/*'
+    - secrets.yml
 
 provider:
   name: aws
@@ -20,6 +21,8 @@ provider:
       Action:
        - "s3:*"
       Resource: "*"
+  environment:
+    HOST_ES: "${self:custom.secrets.HOST_ES}"
 
 functions:
   cuaps-pub:
@@ -51,6 +54,8 @@ custom:
     #    pythonBin:  /usr/bin/python3
     #    #package:
     #    #    excludeDevDependencies: true
+  stage: ${opt:stage, self:provider.stage}
+  secrets: ${file(secrets.yml):${self:custom.stage}}
 
 resources:
   Resources:
