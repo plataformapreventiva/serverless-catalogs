@@ -16,135 +16,104 @@ from io import BytesIO
 
 s3 = boto3.client('s3')
 endpoint = '/_bulk'
-#elastic_address = "search-pp-search-pjomldcgauebmkfa26wkjfiv4y.us-west-2.es.amazonaws.com"
 elastic_address = os.getenv('HOST_ES')
-elastic_index = "cuaps-pub_json"
+elastic_index = os.getenv('INDEX_ES')
 elastic_type = "catalogo"
 
-
-apoyos_None = {
-        "cuaps_folio": None,
-        "tiene_componentes": None,
-        "id_componente": None,
-        "nombre_componente": None,
-        "obj_compo": None,
-        "pob_compo": None,
-        "ap_compo": None,
-        "id_apoyo": None,
-        "nombre_apoyo": None,
-        "descr_apoyo": None,
-        "tipo_pob_apo_cod": None,
-        "tipo_pob_apo": None,
-        "tipo_pob_apo_otro": None,
-        "tipo_apoyo_mon": None,
-        "tipo_apoyo_sub": None,
-        "tipo_apoyo_esp": None,
-        "tipo_apoyo_obra": None,
-        "tipo_apoyo_serv": None,
-        "tipo_apoyo_cap": None,
-        "tipo_apoyo_otro": None,
-        "otro_tipo_apoyo": None,
-        "period_apoyo_cod": None,
-        "period_apoyo": None,
-        "otro_period_apoyo": None,
-        "monto_apoyo_otor": None,
-        "period_monto_cod": None,
-        "period_monto": None,
-        "indic_a": None,
-        "indic_b": None,
-        "indic_c": None,
-        "indic_d": None,
-        "indic_e": None,
-        "indic_f": None,
-        "indic_g": None,
-        "indic_h": None,
-        "indic_i": None,
-        "indic_j": None,
-        "indic_k": None,
-        "indic_l": None,
-        "indic_m": None,
-        "indic_n": None,
-        "indic_o": None,
-        "indic_p": None,
-        "indic_q": None,
-        "indic_r": None,
-        "indic_s": None,
-        "indic_t": None,
-        "tem_apoyo": None,
-        "tem_apoyo_otra_esp": None,
-        "apoyo_gen_padron": None,
-        "tipo_padron": None,
-        "otro_tipo_padron": None,
-        "periodicidad_padron": None,
-        "actualiza_padron": None,
-        "otro_actualiza_padron": None,
-        "cuenta_info_geo": None,
-        "instru_socioe": None,
-        "instru_socioe_cual": None,
-        "observaciones": None,
-        "tipos": None}
-
 indexDoc = {
-    "dataRecord": {
+        "mappings": {
+        "catalogo": {
         "properties": {
-            "cd_programa" : {"type": "string"},
-            "id_pub" : {"type": "string"},
-            "nb_programa" : {"type": "string"},
-            "iduni" : {"type": "string"},
-            "DGAE" : {"type": "string"},
-            "DGAIP" : {"type": "string"},
-            "cd_dependencia" : {"type": "string"},
-            "nb_dependencia" : {"type": "string"},
-            "nb_depen_corto" : {"type": "string"},
-            "anio" : {"type": "string"},
-            "origen" : {"type": "string"},
-            "nb_origen" : {"type": "string"},
-            "origen_dep" : {"type": "string"},
-            "cd_padron" : {"type": "string"},
-            "cuaps_folio" : {"type": "string"},
-            "nb_subp1" : {"type": "string"},
-            "derechos_sociales" : {"type": "string"},
-            "tipos_apoyos" : {"type": "string"}
-        }
-    },
-    "settings": {
+            "cd_programa" : {"type": "text"},
+            "id_pub" : {"type": "text"},
+            "nb_programa" : {"type": "text"},
+            "DGAE" : {"type": "text"},
+            "DGAIP" : {"type": "text"},
+            "anio" : {"type": "text"},
+            "cuaps_folio" : {"type": "text"},
+            "derechos_sociales" : {"type": "text"},
+            "nb_origen" : {"type": "text"},
+            "nb_subp1" : {"type": "text"},
+            "origen" : {"type": "text"},
+            "apoyos" :{
+                    "properties":{
+                        "indic_s" : {"type": "text"},
+                        "cuenta_info_geo" : {"type": "text"},
+                        "obj_compo" : {"type": "text"},
+                        "indic_p" : {"type": "text"},
+                        "otro_actualiza_padron" : {"type": "text"},
+                        "instru_socioe" : {"type": "text"},
+                        "tipo_pob_apo_otro" : {"type": "text"},
+                        "monto_apoyo_otor" : {"type": "text"},
+                        "indic_h" : {"type": "text"},
+                        "instru_socioe_cual" : {"type": "text"},
+                        "indic_e" : {"type": "text"},
+                        "nombre_apoyo" : {"type": "text"},
+                        "cuaps_folio" : {"type": "text"},
+                        "otro_period_apoyo" : {"type": "text"},
+                        "indic_m" : {"type": "text"},
+                        "nombre_componente" : {"type": "text"},
+                        "actualiza_padron" : {"type": "text"},
+                        "indic_i" : {"type": "text"},
+                        "period_apoyo_cod" : {"type": "text"},
+                        "tipo_apoyo_otro" : {"type": "text"},
+                        "indic_a" : {"type": "text"},
+                        "tipo_pob_apo_cod" : {"type": "text"},
+                        "ap_compo" : {"type": "text"},
+                        "tipo_padron" : {"type": "text"},
+                        "period_monto_cod" : {"type": "text"},
+                        "observaciones" : {"type": "text"},
+                        "indic_o" : {"type": "text"},
+                        "indic_d" : {"type": "text"},
+                        "indic_t" : {"type": "text"},
+                        "tipo_apoyo_serv" : {"type": "text"},
+                        "tem_apoyo" : {"type": "text"},
+                        "indic_b" : {"type": "text"},
+                        "periodicidad_padron" : {"type": "text"},
+                        "indic_q" : {"type": "text"},
+                        "apoyo_gen_padron" : {"type": "text"},
+                        "tipo_apoyo_esp" : {"type": "text"},
+                        "otro_tipo_padron" : {"type": "text"},
+                        "period_monto" : {"type": "text"},
+                        "pob_compo" : {"type": "text"},
+                        "indic_f" : {"type": "text"},
+                        "indic_k" : {"type": "text"},
+                        "indic_n" : {"type": "text"},
+                        "tipo_pob_apo" : {"type": "text"},
+                        "tipo_apoyo_mon" : {"type": "text"},
+                        "indic_j" : {"type": "text"},
+                        "tipo_apoyo_obra" : {"type": "text"},
+                        "id_componente" : {"type": "text"},
+                        "otro_tipo_apoyo" : {"type": "text"},
+                        "tiene_componentes" : {"type": "text"},
+                        "indic_g" : {"type": "text"},
+                        "indic_r" : {"type": "text"},
+                        "period_apoyo" : {"type": "text"},
+                        "id_apoyo" : {"type": "text"},
+                        "tipo_apoyo_cap" : {"type": "text"},
+                        "indic_c" : {"type": "text"},
+                        "tem_apoyo_otra_esp" : {"type": "text"},
+                        "descr_apoyo" : {"type": "text"},
+                        "tipos" : {"type": "text"},
+                        "tipo_apoyo_sub" : {"type": "text"},
+                        "indic_l" : {"type": "text"}
+            }},
+            "padrones" :{
+                "properties":{
+                    "origen_dep" : {"type": "text"},
+                    "sector" : {"type": "text"},
+                    "cd_padron" : {"type": "text"},
+                    "cd_programa" : {"type": "text"},
+                    "cd_dependencia" : {"type": "text"},
+                    "anio" : {"type": "text"},
+                    "nb_dependencia" : {"type": "text"},
+                    "nb_depen_corto": {"type": "text"}
+                }}
+            }}},
+        "settings": {
         "number_of_shards": 1,
-        "number_of_replicas": 0
-    }
-    }
-
-indexDoc = {
-    "mappings": {
-     "catalogo": {
-        "properties": {
-            "cd_programa" : {"type": "string"},
-            "id_pub" : {"type": "string"},
-            "nb_programa" : {"type": "string"},
-            "iduni" : {"type": "string"},
-            "DGAE" : {"type": "string"},
-            "DGAIP" : {"type": "string"},
-            "cd_dependencia" : {"type": "string"},
-            "nb_dependencia" : {"type": "string"},
-            "nb_depen_corto" : {"type": "string"},
-            "anio" : {"type": "string"},
-            "origen" : {"type": "string"},
-            "nb_origen" : {"type": "string"},
-            "origen_dep" : {"type": "string"},
-            "cd_padron" : {"type": "string"},
-            "cuaps_folio" : {"type": "string"},
-            "nb_subp1" : {"type": "string"},
-            "derechos_sociales" : {"type": "string"},
-            "apoyos" : {"type": "object"},
-            "padrones" : {"type": "object"}
-            }
+        "number_of_replicas": 0}
         }
-    },
-    "settings": {
-        "number_of_shards": 1,
-        "number_of_replicas": 0
-    }
-    }
-
 
 def catalog(event, context):
     """Lambda Function to update pub catalog index at s3 event.
@@ -156,7 +125,6 @@ def catalog(event, context):
 
     try:
         # define arguments
-        por_linea = True
         max_rows_disp = "all"
         max_rows= None
         count = 0
@@ -170,21 +138,26 @@ def catalog(event, context):
         lista = response['Body'].read().split(b'\n')
         headers_post = {"Content-type": "application/json", "Accept": "text/plain"}
 
-        #if lista[-1] == b'':
-        #    lista = lista[:-1]
-
         # Data sctructure
         keys =list(indexDoc["mappings"]["catalogo"]['properties'].keys())
         values = [ "%"+str(x)+"%" for x in keys]
         json_struct = str(dict(zip(keys, values))).replace("%',", "%',\n")
 
+        connection = http.client.HTTPConnection(elastic_address)
+        # Remove old index
+        response = requests.delete("http://" + elastic_address + "/" + elastic_index)
+        print("Returned from delete request: ", response)
+        # Create index
+        response = requests.put("http://" + elastic_address + "/" + elastic_index, data=json.dumps(indexDoc))
+        print("Returned from create: ", response)
+
         for row in lista:
-            row = row.decode('utf-8')
-            row = row.replace("b'","").replace("'","").replace('""','"').replace('}"', '}')
+            row =  row.decode('utf-8').replace('"','')
+            row = row.replace("'[","[").replace("]'","]")
+            row = row.replace("}'", '}')# .replace("''","'")
             row = row.split("|")
 
             if count == 0:
-
                 for iterator, col in enumerate(row):
                     headers.append(col)
                     headers_position[col] = iterator
@@ -196,11 +169,13 @@ def catalog(event, context):
                 break
             else:
                 pos = 0
+
                 if os.name == 'nt':
                     _data = json_struct.replace("^", '"')
                 else:
                     _data = json_struct.replace("'", '"')
                 _data = _data.replace('\n','').replace('\r','')
+
                 for header in headers:
                     if header == datetime_field:
                         datetime_type = dateutil.parser.parse(row[pos])
@@ -209,57 +184,34 @@ def catalog(event, context):
                         try:
                             if indexDoc["mappings"]["catalogo"]["properties"][headers[pos]]["type"] == 'integer':
                                 _data = _data.replace('"%' + header + '%"', row[pos])
-                            elif indexDoc["mappings"]["catalogo"]["properties"][headers[pos]]["type"] == 'object':
-                                _data = _data.replace('"%' + header + '%"',
-                                        str(yaml.load(row[pos].replace("'",'"'))))
                             else:
                                 _data = _data.replace('%' + header + '%', row[pos])
                         except:
-
-                            try:
-                                _data = _data.replace('"%' + header + '%"',
-                                    str(json.loads(row[pos])))
-                            except:
-                                pass
-                    print(pos)
+                            _data = _data.replace('"%' + header + '%"',
+                                str(yaml.load(row[pos])))
                     pos += 1
+
                 if id_column is not None:
                     index_row = {"index": {"_index": elastic_index,
                                            "_type": elastic_type,
                                            '_id': row[headers_position[id_column]]}}
                 else:
                     index_row = {"index": {"_index": elastic_index, "_type": elastic_type}}
+
                 json_string = json.dumps(index_row) + "\n" + _data + "\n"
-                # to_elastic_string += json_string
-                if por_linea == True:
-                    to_elastic_string = json_string.replace("'",'"').encode('utf-8')
-                    connection = http.client.HTTPConnection(elastic_address)
-                    connection.request('POST', url=endpoint, headers = headers_post, body=to_elastic_string)
-                    response = connection.getresponse()
+                json_string = json_string.replace("'null'",'null').replace('None',"null")
+                json_string = json_string.replace('"[','[').replace(']"',"]")
 
-                    print("Returned status code: ", response.status)
-                    print("Returned status text ", response.read())
+                json_string = json_string
+                to_elastic_string = json_string.replace("'",'"').encode('utf-8')
+                connection = http.client.HTTPConnection(elastic_address)
+                connection.request('POST', url=endpoint, headers = headers_post, body=to_elastic_string)
+                response = connection.getresponse()
+                print("Returned status code: ", response.status)
+                print("Returned status text ", response.read())
 
-
+            print('Iteración: ' + str(count))
             count += 1
-
-        to_elastic_string = to_elastic_string.replace("'",'"').encode('utf-8')
-        connection = http.client.HTTPConnection(elastic_address)
-
-        # Remove old index
-        response = requests.delete("http://" + elastic_address + "/" + elastic_index)
-        print("Returned from delete request: ", response)
-        # Create index
-        response = requests.put("http://" + elastic_address + "/" + elastic_index, data=json.dumps(indexDoc))
-        print("Returned from delete request: ", response)
-
-        # Update ElasticSearch index
-        connection = http.client.HTTPConnection(elastic_address)
-        connection.request('POST', url=endpoint, headers = headers_post, body=to_elastic_string)
-        response = connection.getresponse()
-
-        print("Returned status code: ", response.status)
-        print("Returned status text ", response.read())
 
         # Save json result
         s3.put_object(Body= to_elastic_string,
@@ -267,6 +219,5 @@ def catalog(event, context):
                 Key = "catalogo_cuaps_pub.temporal")
 
     except Exception as e:
-
         raise e
 
