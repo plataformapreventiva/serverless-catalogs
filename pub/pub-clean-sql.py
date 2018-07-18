@@ -432,8 +432,8 @@ if __name__ == "__main__":
     print("saving")
     #raw_data = raw_data.repartition(*variables)
     print(raw_data.show())
-    raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).parquet(output_path)
-    #raw_data.select(SCHEMA_FULL).write.csv(output_path, compression="gzip")
+    #raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).parquet(output_path)
+    raw_data.select(SCHEMA_FULL).write.mode('overwrite').parquet(output_path)
 
     # store_partitions(raw_data, variables, input_path, output_path)
 
