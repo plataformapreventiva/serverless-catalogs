@@ -172,7 +172,7 @@ def gen_age_category(age):
         elif (age >= 12) & (age <= 18):
             category = 'Adolescente'
         elif (age >= 19) & (age <= 29):
-            category = 'Jovene'
+            category = 'Joven'
         elif (age >= 30) & (age <= 60):
             category = 'Adulto'
     except:
