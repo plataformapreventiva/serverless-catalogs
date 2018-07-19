@@ -15,14 +15,15 @@ from pyspark.sql.types import *
 
 #SparkContext.stop(sc)
 #SparkSession._instantiatedContext = None
-SparkContext.setSystemProperty('spark.executor.cores','3')
+SparkContext.setSystemProperty('spark.executor.cores','4')
 SparkContext.setSystemProperty('spark.driver.maxResultSize', '10g')
-SparkContext.setSystemProperty("spark.executor.memory", "30g")
+SparkContext.setSystemProperty("spark.executor.memory", "20g")
 SparkContext.setSystemProperty("spark.executor.memoryOverhead", "8g")
 SparkContext.setSystemProperty("spark.driver.memoryOverhead", "8g")
-SparkContext.setSystemProperty("spark.driver.memory", "5g")
-SparkContext.setSystemProperty("spark.executor.instances", '15')
-SparkContext.setSystemProperty("spark.dynamicAllocation.enabled", 'false')
+SparkContext.setSystemProperty("spark.driver.memory", "25g")
+#SparkContext.setSystemProperty("spark.executor.instances", '6')
+#SparkContext.setSystemProperty("spark.dynamicAllocation.enabled", 'false')
+SparkContext.setSystemProperty("spark.debug.maxToStringFields", '100')
 #conf=SparkConf().setMaster("local").setAppName("Basic")
 # spark = SparkSession.builder.appName('Basic').getOrCreate()
 #sc=SparkContext(conf=conf)
@@ -103,8 +104,8 @@ def make_programatipo(programa, padron, beneficio):
     if not beneficio:
         beneficio = '9999'
     return '{0}_{1}_{2}'.format(programa, padron, beneficio)
-make_programatipo_udf = udf(lambda x,y,z: make_programatipo(x,y,z),
-        StringType())
+
+make_programatipo_udf = udf(lambda x,y,z: make_programatipo(x,y,z), StringType())
 
 def make_iduni(origen, dep, programa, padron, anio):
     return '{0}_{1}_{2}_{3}_{4}'.format(origen,
@@ -112,6 +113,7 @@ def make_iduni(origen, dep, programa, padron, anio):
                                         programa,
                                         padron,
                                         anio)
+
 make_iduni_udf = udf(lambda v,w,x,y,z: make_iduni(v,w,x,y,z), StringType())
 
 def trim(x):
