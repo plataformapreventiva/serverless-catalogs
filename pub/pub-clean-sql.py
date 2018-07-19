@@ -13,16 +13,17 @@ from pyspark.sql.types import *
 
 # Define context and properties
 
-#SparkContext.stop(sc)
-#SparkSession._instantiatedContext = None
-SparkContext.setSystemProperty('spark.executor.cores','4')
-SparkContext.setSystemProperty('spark.driver.maxResultSize', '10g')
-SparkContext.setSystemProperty("spark.executor.memory", "20g")
+SparkContext.stop(sc)
+SparkSession._instantiatedContext = None
+
+SparkContext.setSystemProperty('spark.executor.cores','5')
+SparkContext.setSystemProperty('spark.driver.maxResultSize', '30g')
+SparkContext.setSystemProperty('spark.executor.instances','15')
+SparkContext.setSystemProperty("spark.executor.memory", "50g")
 SparkContext.setSystemProperty("spark.executor.memoryOverhead", "8g")
 SparkContext.setSystemProperty("spark.driver.memoryOverhead", "8g")
-SparkContext.setSystemProperty("spark.driver.memory", "25g")
-#SparkContext.setSystemProperty("spark.executor.instances", '6')
-#SparkContext.setSystemProperty("spark.dynamicAllocation.enabled", 'false')
+SparkContext.setSystemProperty("spark.driver.memory", "35g")
+SparkContext.setSystemProperty("spark.dynamicAllocation.enabled", 'false')
 SparkContext.setSystemProperty("spark.debug.maxToStringFields", '100')
 #conf=SparkConf().setMaster("local").setAppName("Basic")
 # spark = SparkSession.builder.appName('Basic').getOrCreate()
@@ -108,7 +109,7 @@ def make_programatipo(programa, padron, beneficio):
 make_programatipo_udf = udf(lambda x,y,z: make_programatipo(x,y,z), StringType())
 
 def make_iduni(origen, dep, programa, padron, anio):
-    return '{0}_{1}_{2}_{3}_{4}'.format(origen,
+    return '{0}-{1}-{2}-{3}-{4}'.format(origen,
                                         dep,
                                         programa,
                                         padron,
@@ -250,13 +251,14 @@ clean_origin_udf = udf(lambda z: clean_origin(z), StringType())
 def clean_month(raw_month, new_month):
     raw_month = clean_string(raw_month)
     try:
-        clean_month = int(raw_month)
+        int_month = int(raw_month)
     except:
-        return None
-    if (clean_month >= 1) & (clean_month <= 12):
-        return clean_month
-    elif not clean_month:
-        return new_month
+        int_month = None
+    if (int_month >= 1) & (int_month <= 12):
+        int_month = None
+    if not int_month:
+        int_month = new_month
+    return int_month
 
 clean_month_udf = udf(lambda y,z: clean_month(y,z), IntegerType())
 
@@ -304,7 +306,8 @@ def name_benefit(benefit_type):
 name_benefit_udf = udf(lambda z: name_benefit(z), StringType())
 
 def read_pub(year, input_path, size=1):
-    pub_file = input_path + "pub_{0}.txt.gz".format(year)
+    pub_file= input_path + "pub_{0}.txt.gz".format(year)
+    # pub_file = "s3://pub-raw/new_raw/pub_2011.csv"
     customSchema = StructType([
         StructField("cddependencia", StringType(), True),
         StructField("nborigen", StringType(), True),
@@ -393,69 +396,69 @@ def read_catalog(catalogo_file):
             .load(catalogo_file, schema = customSchema)
     return df
 
-if __name__ == "__main__":
-    # Read pub
-    year = '2011'
-    input_path = 's3a://pub-raw/new_raw/'
-    output_path = 's3a://publicaciones-sedesol/pub-new/anio={}/'.format(year)
-    variables = ['numespago']
-    # Read raw pub
-    print("reading")
-    ## Test con SparkSession
-    raw_data = read_pub(year, input_path, 1)
-    print("done reading")
-    # clean pub
-    print("start cleaning")
-    # clean year:
-    raw_data = raw_data.withColumn('anio', clean_integer_udf(col('anio')))
-    # clean months:
-    raw_data = raw_data.withColumn('mescorresp', corresp_month_udf(col('periodo')))
-    raw_data = raw_data.withColumn('numespago',
-            clean_month_udf(col('numespago'), col('mescorresp')))
-    # clean age
-    raw_data = raw_data.withColumn('age', to_age_udf(col('fhnacimiento'),
-                                  col('anio'),
-                                  col('mescorresp')))
-    raw_data = raw_data.withColumn('categoriaedad', gen_age_category_udf(col('age')))
-    # clean name and lastnames
-    raw_data = raw_data.withColumn('nbprimerap', clean_name_udf(col('nbprimerap'),col('age')))
-    raw_data = raw_data.withColumn('nbsegundoap', clean_name_udf(col('nbsegundoap'),col('age')))
-    raw_data = raw_data.withColumn('nbnombre', clean_name_udf(col('nbnombre'),col('age')))
-    # clean_gender
-    raw_data = raw_data.withColumn('cdsexo', clean_gender_udf(col('cdsexo')))
-    # clean origin
-    raw_data = raw_data.withColumn('origen', clean_origin_udf(col('nborigen')))
-    # clean money
-    raw_data = raw_data.withColumn('nuimpmonetario', clean_integer_udf(col('nuimpmonetario')))
-    # paymente location
-    raw_data = raw_data.withColumn('cveentpago', clean_edo_udf(col('cdentpago')))
-    raw_data = raw_data.withColumn('cvemunipago',
-            clean_muni_udf(col('cdmunpago'),col('cveentpago')))
-    raw_data = raw_data.withColumn('cvelocpago', clean_loc_udf(col('cdlocpago')))
-    # Person location
-    raw_data = raw_data.withColumn('cveedo', clean_edo_udf(col('cveent')))
-    raw_data = raw_data.withColumn('cvemuni', clean_muni_udf(col('cveent'), col('cvemun')))
-    raw_data = raw_data.withColumn('cveloc', clean_loc_udf(col('cveloc')))
-    # clean type of benefit
-    raw_data = raw_data.withColumn('nombretipobeneficio',
-    name_benefit_udf(col('cdtipobeneficio')))
-    # Add new columns for join
-    raw_data = raw_data.withColumn('programatipo',
-            make_programatipo_udf(col('cdprograma'),col('cdpadron'),col('cdtipobeneficio')))
-    raw_data = raw_data.withColumn('iduni',
-        make_iduni_udf(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
-    print("done")
-    # Read catalogo
-    catalogo_file = 's3a://pub-raw/diccionarios/catalogo_programas.csv'
-    catalogo = read_catalog(catalogo_file)
-    catalogo_columns = ['anio', 'iduni', 'nombresubp1','nombreprograma','nbdependencia', 'nbdepencorto']
-    print("filtering")
-    catalogo = catalogo.select(*catalogo_columns).filter(catalogo.anio == year)
-    catalogo = catalogo.withColumnRenamed("anio", "anio_catalogo")
-    # Join with catalogo
-    print("join")
-    raw_data = raw_data.join(broadcast(catalogo),
-        raw_data.iduni == catalogo.iduni, 'left').drop(catalogo.iduni)
-    # Store with partitions
-    print("saving")
-    raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).parquet(output_path)
+year = '2011'
+input_path = 's3a://pub-raw/new_raw/'
+output_path = 's3a://publicaciones-sedesol/pub-new/anio={}/'.format(year)
+
+variables = ['numespago']
+# Read raw pub
+print("reading")
+## Test con SparkSession
+raw_data = read_pub(year, input_path, 1)
+
+print("done reading")
+# clean pub
+print("start cleaning")
+# clean year:
+raw_data = raw_data.withColumn('anio', clean_integer_udf(col('anio')))
+# clean months:
+raw_data = raw_data.withColumn('mescorresp', corresp_month_udf(col('periodo')))
+raw_data = raw_data.withColumn('numespago',
+        clean_month_udf(col('numespago'), col('mescorresp')))
+# clean age
+raw_data = raw_data.withColumn('age', to_age_udf(col('fhnacimiento'),
+                              col('anio'),
+                              col('mescorresp')))
+raw_data = raw_data.withColumn('categoriaedad', gen_age_category_udf(col('age')))
+# clean name and lastnames
+raw_data = raw_data.withColumn('nbprimerap', clean_name_udf(col('nbprimerap'),col('age')))
+raw_data = raw_data.withColumn('nbsegundoap', clean_name_udf(col('nbsegundoap'),col('age')))
+raw_data = raw_data.withColumn('nbnombre', clean_name_udf(col('nbnombre'),col('age')))
+# clean_gender
+raw_data = raw_data.withColumn('cdsexo', clean_gender_udf(col('cdsexo')))
+# clean origin
+raw_data = raw_data.withColumn('origen', clean_origin_udf(col('nborigen')))
+# clean money
+raw_data = raw_data.withColumn('nuimpmonetario', clean_integer_udf(col('nuimpmonetario')))
+# paymente location
+raw_data = raw_data.withColumn('cveentpago', clean_edo_udf(col('cdentpago')))
+raw_data = raw_data.withColumn('cvemunipago',
+        clean_muni_udf(col('cdmunpago'),col('cveentpago')))
+raw_data = raw_data.withColumn('cvelocpago', clean_loc_udf(col('cdlocpago')))
+# Person location
+raw_data = raw_data.withColumn('cveedo', clean_edo_udf(col('cveent')))
+raw_data = raw_data.withColumn('cvemuni', clean_muni_udf(col('cveent'), col('cvemun')))
+raw_data = raw_data.withColumn('cveloc', clean_loc_udf(col('cveloc')))
+# clean type of benefit
+raw_data = raw_data.withColumn('nombretipobeneficio',
+name_benefit_udf(col('cdtipobeneficio')))
+# Add new columns for join
+raw_data = raw_data.withColumn('programatipo',
+        make_programatipo_udf(col('cdprograma'),col('cdpadron'),col('cdtipobeneficio')))
+raw_data = raw_data.withColumn('iduni',
+    make_iduni_udf(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
+print("done")
+# Read catalogo
+catalogo_file = 's3a://pub-raw/diccionarios/catalogo_programas.csv'
+catalogo = read_catalog(catalogo_file)
+catalogo_columns = ['anio', 'iduni', 'nombresubp1','nombreprograma','nbdependencia', 'nbdepencorto']
+print("filtering")
+catalogo = catalogo.select(*catalogo_columns).filter(catalogo.anio == year)
+catalogo = catalogo.withColumnRenamed("anio", "anio_catalogo")
+# Join with catalogo
+print("join")
+raw_data = raw_data.join(broadcast(catalogo),
+    raw_data.iduni == catalogo.iduni, 'left').drop(catalogo.iduni)
+# Store with partitions
+print("saving")
+raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).parquet(output_path)
