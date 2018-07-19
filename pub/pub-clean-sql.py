@@ -291,7 +291,6 @@ name_benefit_udf = udf(lambda z: name_benefit(z), StringType())
 
 def read_pub(year, input_path, size=1):
     pub_file = input_path + "pub_{0}.txt.gz".format(year)
-    pub_file = "s3://pub-raw/new_raw/pub_2011.csv"
     customSchema = StructType([
         StructField("cddependencia", StringType(), True),
         StructField("nborigen", StringType(), True),
