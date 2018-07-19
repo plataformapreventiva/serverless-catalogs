@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from __future__ import print_function
 import argparse
 import boto3
@@ -93,16 +94,22 @@ SCHEMA_FULL = [
 # schema of output table for publications
 SCHEMA_PUBLICATION = []
 
-new_id_udf1 = udf(lambda col1, col2, col3 : '{0}_{1}_{2}'.format(col1, col2, col3), StringType())
 
-new_id_udf2 = udf(lambda col1, col2, col3, col4, col5 : '{0}_{1}_{2}_{3}_{4}'.format(col1, col2, col3, col4, col5), StringType())
 
-def make_new_id(list_names):
-    if len(list_names) > 0:
-        new_id = "_".join(list_names)
-        return new_id
-    else:
-        return ""
+def make_programatipo(programa, padron, beneficio):
+    if not beneficio:
+        beneficio = '9999'
+    return '{0}_{1}_{2}'.format(programa, padron, beneficio)
+make_programatipo_udf = udf(lambda x,y,z: make_programatipo(x,y,z),
+        StringType())
+
+def make_iduni(origen, dep, programa, padron, anio):
+    return '{0}_{1}_{2}_{3}_{4}'.format(origen,
+                                        dep,
+                                        programa,
+                                        padron,
+                                        anio)
+make_iduni_udf = udf(lambda v,w,x,y,z; make_iduni(v,w,x,y,z), StringType())
 
 def trim(x):
     try:
@@ -235,7 +242,7 @@ def clean_origin(origin):
 
 clean_origin_udf = udf(lambda z: clean_origin(z), StringType())
 
-def clean_month(raw_month):
+def clean_month(raw_month, new_month):
     raw_month = clean_string(raw_month)
     try:
         clean_month = int(raw_month)
@@ -243,8 +250,10 @@ def clean_month(raw_month):
         return None
     if (clean_month >= 1) & (clean_month <= 12):
         return clean_month
+    elif not clean_month:
+        return new_month
 
-clean_month_udf = udf(lambda z: clean_month(z), IntegerType())
+clean_month_udf = udf(lambda y,z: clean_month(y,z), IntegerType())
 
 def corresp_month(periodo):
     periodo = clean_string(periodo)
@@ -350,7 +359,8 @@ def read_pub(year, input_path, size=1):
             .option("delimiter", "|") \
             .load(pub_file, schema = customSchema)
     # Make sample
-    #raw_data = raw_data.sample(False, size, 42)
+    if size != 1:
+        raw_data = raw_data.sample(False, size, 42)
     #raw_data = raw_data.sample(False, size, 1234)
     return raw_data
 
@@ -394,8 +404,9 @@ if __name__ == "__main__":
     # clean year:
     raw_data = raw_data.withColumn('anio', clean_integer_udf(col('anio')))
     # clean months:
-    raw_data = raw_data.withColumn('numespago', clean_month_udf(col('numespago')))
     raw_data = raw_data.withColumn('mescorresp', corresp_month_udf(col('periodo')))
+    raw_data = raw_data.withColumn('numespago',
+            clean_month_udf(col('numespago')), col('mescorresp'))
     # clean age
     raw_data = raw_data.withColumn('age', to_age_udf(col('fhnacimiento'),
                                   col('anio'),
@@ -414,7 +425,7 @@ if __name__ == "__main__":
     # paymente location
     raw_data = raw_data.withColumn('cveentpago', clean_edo_udf(col('cdentpago')))
     raw_data = raw_data.withColumn('cvemunipago',
-    clean_muni_udf(col('cdmunpago'),col('cveentpago')))
+            clean_muni_udf(col('cdmunpago'),col('cveentpago')))
     raw_data = raw_data.withColumn('cvelocpago', clean_loc_udf(col('cdlocpago')))
     # Person location
     raw_data = raw_data.withColumn('cveedo', clean_edo_udf(col('cveent')))
@@ -425,9 +436,9 @@ if __name__ == "__main__":
     name_benefit_udf(col('cdtipobeneficio')))
     # Add new columns for join
     raw_data = raw_data.withColumn('programatipo',
-    new_id_udf1(col('cdprograma'),col('cdpadron'),col('cdtipobeneficio')))
+            make_programatipo_udf(col('cdprograma'),col('cdpadron'),col('cdtipobeneficio')))
     raw_data = raw_data.withColumn('iduni',
-        new_id_udf2(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
+        make_iduni_udf(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
     print("done")
     # Read catalogo
     catalogo_file = 's3://pub-raw/diccionarios/catalogo_programas.csv'
