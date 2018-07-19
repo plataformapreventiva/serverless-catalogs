@@ -15,18 +15,21 @@ from pyspark.sql.types import *
 
 #SparkContext.stop(sc)
 #SparkSession._instantiatedContext = None
-SparkContext.setSystemProperty('spark.executor.cores','4')
+SparkContext.setSystemProperty('spark.executor.cores','3')
 SparkContext.setSystemProperty('spark.driver.maxResultSize', '10g')
-SparkContext.setSystemProperty("spark.executor.memory", "20g")
+SparkContext.setSystemProperty("spark.executor.memory", "30g")
 SparkContext.setSystemProperty("spark.executor.memoryOverhead", "8g")
 SparkContext.setSystemProperty("spark.driver.memoryOverhead", "8g")
-SparkContext.setSystemProperty("spark.driver.memory", "25g")
+SparkContext.setSystemProperty("spark.driver.memory", "5g")
+SparkContext.setSystemProperty("spark.executor.instances", '15')
+SparkContext.setSystemProperty("spark.dynamicAllocation.enabled", 'false')
 #conf=SparkConf().setMaster("local").setAppName("Basic")
 # spark = SparkSession.builder.appName('Basic').getOrCreate()
 #sc=SparkContext(conf=conf)
 sc = SparkContext.getOrCreate()
-sc._conf.getAll()
+print(sc._conf.getAll())
 sc._jsc.hadoopConfiguration().set("parquet.enable.summary-metadata", "false")
+sqlContext = SQLContext(sc)
 
 # schema of output table
 SCHEMA_FULL = [
@@ -109,7 +112,7 @@ def make_iduni(origen, dep, programa, padron, anio):
                                         programa,
                                         padron,
                                         anio)
-make_iduni_udf = udf(lambda v,w,x,y,z; make_iduni(v,w,x,y,z), StringType())
+make_iduni_udf = udf(lambda v,w,x,y,z: make_iduni(v,w,x,y,z), StringType())
 
 def trim(x):
     try:
@@ -165,11 +168,11 @@ def gen_age_category(age):
         elif age <= 11:
             category = 'Infante'
         elif (age >= 12) & (age <= 18):
-            category = 'Adolescentes'
+            category = 'Adolescente'
         elif (age >= 19) & (age <= 29):
-            category = 'Jóvenes'
+            category = 'Jovene'
         elif (age >= 30) & (age <= 60):
-            category = 'Adultos'
+            category = 'Adulto'
     except:
         category = None
     return category
@@ -390,14 +393,14 @@ def read_catalog(catalogo_file):
 
 if __name__ == "__main__":
     # Read pub
-    year = '2017'
-    input_path = 's3://pub-raw/new_raw/'
+    year = '2011'
+    input_path = 's3a://pub-raw/new_raw/'
     output_path = 's3a://publicaciones-sedesol/pub-new/anio={}/'.format(year)
     variables = ['numespago']
     # Read raw pub
     print("reading")
     ## Test con SparkSession
-    raw_data = read_pub(year, input_path, 0.0001)
+    raw_data = read_pub(year, input_path, 1)
     print("done reading")
     # clean pub
     print("start cleaning")
@@ -406,7 +409,7 @@ if __name__ == "__main__":
     # clean months:
     raw_data = raw_data.withColumn('mescorresp', corresp_month_udf(col('periodo')))
     raw_data = raw_data.withColumn('numespago',
-            clean_month_udf(col('numespago')), col('mescorresp'))
+            clean_month_udf(col('numespago'), col('mescorresp')))
     # clean age
     raw_data = raw_data.withColumn('age', to_age_udf(col('fhnacimiento'),
                                   col('anio'),
@@ -441,7 +444,7 @@ if __name__ == "__main__":
         make_iduni_udf(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
     print("done")
     # Read catalogo
-    catalogo_file = 's3://pub-raw/diccionarios/catalogo_programas.csv'
+    catalogo_file = 's3a://pub-raw/diccionarios/catalogo_programas.csv'
     catalogo = read_catalog(catalogo_file)
     catalogo_columns = ['anio', 'iduni', 'nombresubp1','nombreprograma','nbdependencia', 'nbdepencorto']
     print("filtering")
