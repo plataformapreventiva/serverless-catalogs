@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from __future__ import print_function
 import argparse
 import boto3
@@ -7,26 +6,25 @@ import pdb
 import datetime
 import os
 from pyspark import SparkContext
-from pyspark.sql import SQLContext, Row
+from pyspark.sql import SQLContext, Row, SparkSession
 from pyspark.sql.functions import col, udf, broadcast
 from pyspark.sql.types import *
 
-#------------------------------------------------------------------
-## To run:
-# spark-submit --conf spark.executor.memory=18g
-# --conf spark.executor.instances=19
-# --conf spark.executor.cores=5
-# --conf spark.driver.cores=3
-# --conf spark.driver.memory=18g
-# --conf spark.yarn.executor.memoryOverhead=11g
-# --conf spark.yarn.driver.memoryOverhead=11g
-# --conf spark.yarn.appMasterEnv.PYSPARK_PYTHON=/usr/bin/python3
-# --conf spark.executorEnv.PYSPARK_PYTHON=/usr/bin/python3
-# pub-clean.py
-#-------------------------------------------------------------------
+# Define context and properties
 
+#SparkContext.stop(sc)
+#SparkSession._instantiatedContext = None
+SparkContext.setSystemProperty('spark.executor.cores','4')
+SparkContext.setSystemProperty('spark.driver.maxResultSize', '10g')
+SparkContext.setSystemProperty("spark.executor.memory", "20g")
+SparkContext.setSystemProperty("spark.executor.memoryOverhead", "8g")
+SparkContext.setSystemProperty("spark.driver.memoryOverhead", "8g")
+SparkContext.setSystemProperty("spark.driver.memory", "25g")
+#conf=SparkConf().setMaster("local").setAppName("Basic")
+# spark = SparkSession.builder.appName('Basic').getOrCreate()
+#sc=SparkContext(conf=conf)
 sc = SparkContext.getOrCreate()
-sqlContext = SQLContext(sc)
+sc._conf.getAll()
 sc._jsc.hadoopConfiguration().set("parquet.enable.summary-metadata", "false")
 
 # schema of output table
@@ -91,12 +89,14 @@ SCHEMA_FULL = [
     'nbdependencia',
     'nbdepencorto'
          ]
+
 # schema of output table for publications
 SCHEMA_PUBLICATION = []
 
-
 new_id_udf1 = udf(lambda col1, col2, col3 : '{0}_{1}_{2}'.format(col1, col2, col3), StringType())
+
 new_id_udf2 = udf(lambda col1, col2, col3, col4, col5 : '{0}_{1}_{2}_{3}_{4}'.format(col1, col2, col3, col4, col5), StringType())
+
 def make_new_id(list_names):
     if len(list_names) > 0:
         new_id = "_".join(list_names)
@@ -115,6 +115,7 @@ def clean_string(x):
         return x.replace('"', '')
     else:
         return x
+
 clean_string_udf = udf(lambda z: clean_string(z), StringType())
 
 def clean_integer(raw_int):
@@ -124,6 +125,7 @@ def clean_integer(raw_int):
     except:
         clean_int = None
     return clean_int
+
 clean_integer_udf = udf(lambda z: clean_integer(z), IntegerType())
 
 def clean_name(name, age):
@@ -134,6 +136,7 @@ def clean_name(name, age):
             return name
     except:
         return name
+
 clean_name_udf = udf(lambda y,z: clean_name(y,z), StringType())
 
 def to_age(birthdate, year, mes_corresp):
@@ -145,6 +148,7 @@ def to_age(birthdate, year, mes_corresp):
     except:
         age = None
     return age
+
 to_age_udf = udf(lambda x,y,z: to_age(x,y,z), IntegerType())
 
 def gen_age_category(age):
@@ -162,6 +166,7 @@ def gen_age_category(age):
     except:
         category = None
     return category
+
 gen_age_category_udf = udf(lambda z: gen_age_category(z), StringType())
 
 def clean_muni(muni, edo):
@@ -175,6 +180,7 @@ def clean_muni(muni, edo):
         cve_muni = "{ent}{mun}".format(ent=str(edo_int).zfill(2),
                                        mun=str(muni_int).zfill(4))
         return cve_muni
+
 clean_muni_udf = udf(lambda y,z: clean_muni(y,z), StringType())
 
 def clean_loc(loc):
@@ -186,6 +192,7 @@ def clean_loc(loc):
     if (loc_int > 9999) & (loc_int > 0):
         cve_loc = str(loc_int).zfill(4)
         return cve_loc
+
 clean_loc_udf = udf(lambda z: clean_loc(z), StringType())
 
 def clean_edo(edo):
@@ -197,6 +204,7 @@ def clean_edo(edo):
     if (edo_int <= 32) & (edo_int > 0):
         cve_edo = str(edo_int).zfill(2)
         return cve_edo
+
 clean_edo_udf = udf(lambda z: clean_edo(z), StringType())
 
 def clean_gender(gender):
@@ -210,6 +218,7 @@ def clean_gender(gender):
     except:
         gen = None
     return gen
+
 clean_gender_udf = udf(lambda z: clean_gender(z), StringType())
 
 def clean_origin(origin):
@@ -223,6 +232,7 @@ def clean_origin(origin):
     except:
         clean_origin = None
     return clean_origin
+
 clean_origin_udf = udf(lambda z: clean_origin(z), StringType())
 
 def clean_month(raw_month):
@@ -233,6 +243,7 @@ def clean_month(raw_month):
         return None
     if (clean_month >= 1) & (clean_month <= 12):
         return clean_month
+
 clean_month_udf = udf(lambda z: clean_month(z), IntegerType())
 
 def corresp_month(periodo):
@@ -251,6 +262,7 @@ def corresp_month(periodo):
             else:
                 clean_month = None
         return clean_month
+
 corresp_month_udf = udf(lambda z: corresp_month(z), IntegerType())
 
 def name_benefit(benefit_type):
@@ -274,10 +286,12 @@ def name_benefit(benefit_type):
     except:
         benefit_name = None
     return benefit_name
+
 name_benefit_udf = udf(lambda z: name_benefit(z), StringType())
 
 def read_pub(year, input_path, size=1):
     pub_file = input_path + "pub_{0}.txt.gz".format(year)
+    pub_file = "s3://pub-raw/new_raw/pub_2011.csv"
     customSchema = StructType([
         StructField("cddependencia", StringType(), True),
         StructField("nborigen", StringType(), True),
@@ -365,9 +379,6 @@ def read_catalog(catalogo_file):
             .load(catalogo_file, schema = customSchema)
     return df
 
-def store_partitions(df, variables, input_path, output_path):
-    pdb.set_trace()
-
 if __name__ == "__main__":
     # Read pub
     year = '2017'
@@ -376,6 +387,7 @@ if __name__ == "__main__":
     variables = ['numespago']
     # Read raw pub
     print("reading")
+    ## Test con SparkSession
     raw_data = read_pub(year, input_path, 0.0001)
     print("done reading")
     # clean pub
@@ -387,8 +399,8 @@ if __name__ == "__main__":
     raw_data = raw_data.withColumn('mescorresp', corresp_month_udf(col('periodo')))
     # clean age
     raw_data = raw_data.withColumn('age', to_age_udf(col('fhnacimiento'),
-                                          col('anio'),
-                                          col('mescorresp')))
+                                  col('anio'),
+                                  col('mescorresp')))
     raw_data = raw_data.withColumn('categoriaedad', gen_age_category_udf(col('age')))
     # clean name and lastnames
     raw_data = raw_data.withColumn('nbprimerap', clean_name_udf(col('nbprimerap'),col('age')))
@@ -403,7 +415,7 @@ if __name__ == "__main__":
     # paymente location
     raw_data = raw_data.withColumn('cveentpago', clean_edo_udf(col('cdentpago')))
     raw_data = raw_data.withColumn('cvemunipago',
-            clean_muni_udf(col('cdmunpago'),col('cveentpago')))
+    clean_muni_udf(col('cdmunpago'),col('cveentpago')))
     raw_data = raw_data.withColumn('cvelocpago', clean_loc_udf(col('cdlocpago')))
     # Person location
     raw_data = raw_data.withColumn('cveedo', clean_edo_udf(col('cveent')))
@@ -411,29 +423,24 @@ if __name__ == "__main__":
     raw_data = raw_data.withColumn('cveloc', clean_loc_udf(col('cveloc')))
     # clean type of benefit
     raw_data = raw_data.withColumn('nombretipobeneficio',
-            name_benefit_udf(col('cdtipobeneficio')))
+    name_benefit_udf(col('cdtipobeneficio')))
     # Add new columns for join
     raw_data = raw_data.withColumn('programatipo',
-            new_id_udf1(col('cdprograma'),col('cdpadron'),col('cdtipobeneficio')))
+    new_id_udf1(col('cdprograma'),col('cdpadron'),col('cdtipobeneficio')))
     raw_data = raw_data.withColumn('iduni',
-            new_id_udf2(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
+        new_id_udf2(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
     print("done")
     # Read catalogo
     catalogo_file = 's3://pub-raw/diccionarios/catalogo_programas.csv'
     catalogo = read_catalog(catalogo_file)
-    catalogo_columns = ['iduni', 'nombresubp1','nombreprograma','nbdependencia', 'nbdepencorto']
+    catalogo_columns = ['anio', 'iduni', 'nombresubp1','nombreprograma','nbdependencia', 'nbdepencorto']
     print("filtering")
     catalogo = catalogo.select(*catalogo_columns).filter(catalogo.anio == year)
+    catalogo = catalogo.withColumnRenamed("anio", "anio_catalogo")
     # Join with catalogo
     print("join")
     raw_data = raw_data.join(broadcast(catalogo),
-            raw_data.iduni == catalogo.iduni, 'left').drop(catalogo.iduni)
+        raw_data.iduni == catalogo.iduni, 'left').drop(catalogo.iduni)
     # Store with partitions
     print("saving")
-    #raw_data = raw_data.repartition(*variables)
-    print(raw_data.show())
-    #raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).parquet(output_path)
-    raw_data.select(SCHEMA_FULL).write.mode('overwrite').parquet(output_path)
-
-    # store_partitions(raw_data, variables, input_path, output_path)
-
+    raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).parquet(output_path)
