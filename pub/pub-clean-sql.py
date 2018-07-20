@@ -1,36 +1,29 @@
-#!/usr/bin/env python
-from __future__ import print_function
-import argparse
-import boto3
 import re
 import pdb
 import datetime
 import os
-from pyspark import SparkContext
+from pyspark import SparkContext, SparkConf
 from pyspark.sql import SQLContext, Row, SparkSession
 from pyspark.sql.functions import col, udf, broadcast
 from pyspark.sql.types import *
 
 # Define context and properties
+conf = SparkConf().set('spark.executor.cores','5') \
+                  .set('spark.executor.instances','8') \
+                  .set('spark.sql.files.maxPartitionBytes', '50') \
+                  .set("spark.executor.memory", "20g") \
+                  .set("spark.executor.memoryOverhead", "5g") \
+                  .set("spark.driver.memoryOverhead", "5g") \
+                  .set("spark.dynamicAllocation.enabled", 'false') \
+                  .set("spark.debug.maxToStringFields", '100') \
+                  .set("spark.sql.shuffle.partitions", '200') \
+#                  .set("spark.shuffle.service.enabled", "false")
+sc = SparkContext.getOrCreate(conf)
 
-SparkContext.stop(sc)
-SparkSession._instantiatedContext = None
-
-SparkContext.setSystemProperty('spark.executor.cores','5')
-SparkContext.setSystemProperty('spark.driver.maxResultSize', '30g')
-SparkContext.setSystemProperty('spark.executor.instances','15')
-SparkContext.setSystemProperty("spark.executor.memory", "50g")
-SparkContext.setSystemProperty("spark.executor.memoryOverhead", "8g")
-SparkContext.setSystemProperty("spark.driver.memoryOverhead", "8g")
-SparkContext.setSystemProperty("spark.driver.memory", "35g")
-SparkContext.setSystemProperty("spark.dynamicAllocation.enabled", 'false')
-SparkContext.setSystemProperty("spark.debug.maxToStringFields", '100')
-#conf=SparkConf().setMaster("local").setAppName("Basic")
-# spark = SparkSession.builder.appName('Basic').getOrCreate()
-#sc=SparkContext(conf=conf)
-sc = SparkContext.getOrCreate()
 print(sc._conf.getAll())
 sc._jsc.hadoopConfiguration().set("parquet.enable.summary-metadata", "false")
+sc._jsc.hadoopConfiguration().set("fs.s3a.fast.upload", "true")
+
 sqlContext = SQLContext(sc)
 
 # schema of output table
@@ -460,5 +453,5 @@ print("join")
 raw_data = raw_data.join(broadcast(catalogo),
     raw_data.iduni == catalogo.iduni, 'left').drop(catalogo.iduni)
 # Store with partitions
-print("saving")
 raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).parquet(output_path)
+
