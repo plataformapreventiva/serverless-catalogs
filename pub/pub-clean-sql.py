@@ -26,6 +26,12 @@ sc._jsc.hadoopConfiguration().set("fs.s3a.fast.upload", "true")
 
 sqlContext = SQLContext(sc)
 
+# Raw txt data path
+input_path = 's3a://pub-raw/glue_txt/'
+
+# schema of output table for publications
+SCHEMA_PUBLICATION = []
+
 # schema of output table
 SCHEMA_FULL = [
     'anio',
@@ -88,9 +94,6 @@ SCHEMA_FULL = [
     'nbdependencia',
     'nbdepencorto'
          ]
-
-# schema of output table for publications
-SCHEMA_PUBLICATION = []
 
 
 
@@ -247,11 +250,11 @@ def clean_month(raw_month, new_month):
         int_month = int(raw_month)
     except:
         int_month = None
-    if (int_month >= 1) & (int_month <= 12):
-        int_month = None
+
     if not int_month:
         int_month = new_month
-    return int_month
+    if (int_month >= 1) & (int_month <= 12):
+        return int_month
 
 clean_month_udf = udf(lambda y,z: clean_month(y,z), IntegerType())
 
@@ -299,8 +302,8 @@ def name_benefit(benefit_type):
 name_benefit_udf = udf(lambda z: name_benefit(z), StringType())
 
 def read_pub(year, input_path, size=1):
-    pub_file= input_path + "pub_{0}.txt.gz".format(year)
-    # pub_file = "s3://pub-raw/new_raw/pub_2011.csv"
+    #pub_file= input_path + "pub_{0}.txt.gz".format(year)    
+    pub_file = "s3://pub-raw/new_decompressed/pub_2011.csv"
     customSchema = StructType([
         StructField("cddependencia", StringType(), True),
         StructField("nborigen", StringType(), True),
@@ -389,10 +392,7 @@ def read_catalog(catalogo_file):
             .load(catalogo_file, schema = customSchema)
     return df
 
-year = '2011'
-input_path = 's3a://pub-raw/new_raw/'
-output_path = 's3a://publicaciones-sedesol/pub-new/anio={}/'.format(year)
-
+year = "2017"
 variables = ['numespago']
 # Read raw pub
 print("reading")
@@ -407,11 +407,11 @@ raw_data = raw_data.withColumn('anio', clean_integer_udf(col('anio')))
 # clean months:
 raw_data = raw_data.withColumn('mescorresp', corresp_month_udf(col('periodo')))
 raw_data = raw_data.withColumn('numespago',
-        clean_month_udf(col('numespago'), col('mescorresp')))
+    clean_month_udf(col('numespago'), col('mescorresp')))
 # clean age
 raw_data = raw_data.withColumn('age', to_age_udf(col('fhnacimiento'),
-                              col('anio'),
-                              col('mescorresp')))
+                          col('anio'),
+                          col('mescorresp')))
 raw_data = raw_data.withColumn('categoriaedad', gen_age_category_udf(col('age')))
 # clean name and lastnames
 raw_data = raw_data.withColumn('nbprimerap', clean_name_udf(col('nbprimerap'),col('age')))
@@ -426,32 +426,34 @@ raw_data = raw_data.withColumn('nuimpmonetario', clean_integer_udf(col('nuimpmon
 # paymente location
 raw_data = raw_data.withColumn('cveentpago', clean_edo_udf(col('cdentpago')))
 raw_data = raw_data.withColumn('cvemunipago',
-        clean_muni_udf(col('cdmunpago'),col('cveentpago')))
+    clean_muni_udf(col('cdmunpago'),col('cveentpago')))
 raw_data = raw_data.withColumn('cvelocpago', clean_loc_udf(col('cdlocpago')))
 # Person location
 raw_data = raw_data.withColumn('cveedo', clean_edo_udf(col('cveent')))
 raw_data = raw_data.withColumn('cvemuni', clean_muni_udf(col('cveent'), col('cvemun')))
 raw_data = raw_data.withColumn('cveloc', clean_loc_udf(col('cveloc')))
 # clean type of benefit
-raw_data = raw_data.withColumn('nombretipobeneficio',
-name_benefit_udf(col('cdtipobeneficio')))
+raw_data = raw_data.withColumn('nombretipobeneficio', name_benefit_udf(col('cdtipobeneficio')))
 # Add new columns for join
-raw_data = raw_data.withColumn('programatipo',
-        make_programatipo_udf(col('cdprograma'),col('cdpadron'),col('cdtipobeneficio')))
+raw_data = raw_data.withColumn('programatipo', make_programatipo_udf(col('cdprograma'),col('cdpadron'),col('cdtipobeneficio')))
 raw_data = raw_data.withColumn('iduni',
-    make_iduni_udf(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
+make_iduni_udf(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
 print("done")
 # Read catalogo
-catalogo_file = 's3a://pub-raw/diccionarios/catalogo_programas.csv'
+catalogo_file = 's3://pub-raw/diccionarios/catalogo_programas.csv'
 catalogo = read_catalog(catalogo_file)
 catalogo_columns = ['anio', 'iduni', 'nombresubp1','nombreprograma','nbdependencia', 'nbdepencorto']
 print("filtering")
 catalogo = catalogo.select(*catalogo_columns).filter(catalogo.anio == year)
 catalogo = catalogo.withColumnRenamed("anio", "anio_catalogo")
-# Join with catalogo
 print("join")
-raw_data = raw_data.join(broadcast(catalogo),
-    raw_data.iduni == catalogo.iduni, 'left').drop(catalogo.iduni)
-# Store with partitions
-raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).parquet(output_path)
+raw_data = raw_data.join(broadcast(catalogo), raw_data.iduni == catalogo.iduni, 'left').drop(catalogo.iduni)
+
+
+# pub_publicacion
+output_path_publicacion = 's3a://publicaciones-sedesol/pub-publicacion/anio={}/'.format(year)
+
+# pub_clean
+output_path_publicacion = 's3a://publicaciones-sedesol/pub-cleaned/anio={}/'.format(year)
+raw_data.write.mode('overwrite').partitionBy(*variables).parquet(output_path)
 
