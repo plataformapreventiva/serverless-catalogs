@@ -26,7 +26,6 @@ sqlContext = SQLContext(sc)
 
 # schema of output table for publications
 SCHEMA_PUBLICATION = [
-    'anio',
     'categoriaedad',
     'cdbeneficio',
     'cddependencia',
@@ -60,7 +59,6 @@ SCHEMA_PUBLICATION = [
 
 # schema of output table
 SCHEMA_FULL = [
-    'anio',
     'categoriaedad',
     'cdbeneficio',
     'cddependencia',
@@ -262,7 +260,8 @@ def clean_origin(origin):
         else:
             clean_origin = None
     except:
-        clean_origin = None
+        # Asumimos que cuando hay nulo es Federal
+        clean_origin = 'F'
     return clean_origin
 
 clean_origin_udf = udf(lambda z: clean_origin(z), StringType())
@@ -325,8 +324,8 @@ def name_benefit(benefit_type):
 name_benefit_udf = udf(lambda z: name_benefit(z), StringType())
 
 def read_pub(year, input_path, size=1):
-    pub_file= input_path + "pub_{0}.txt".format(year)    
-    # pub_file = "s3://pub-raw/new_decompressed/pub_2011.csv"
+    pub_file= input_path + "pub_{0}.txt".format(year)
+    # pub_file = "s3://pub-raw/new_decompressed/pub_2011_prueba.csv"
     customSchema = StructType([
         StructField("cddependencia", StringType(), True),
         StructField("nborigen", StringType(), True),
@@ -415,14 +414,13 @@ def read_catalog(catalogo_file):
             .load(catalogo_file, schema = customSchema)
     return df
 
-# "2012",
+if __name__ == "__main__":
+    # Read pub
+    year = '2017'
 
-for year in ["2011","2013","2014","2015","2016","2017"]:
-  year = str(year)
-  variables = ['numespago']
+ variables = ['numespago']
   # Read raw pub
   print("reading")
-  ## Test con SparkSession
 
   # Raw txt data path
   input_path = 's3://pub-raw/glue_txt/'
@@ -482,3 +480,6 @@ for year in ["2011","2013","2014","2015","2016","2017"]:
   output_path_publicacion = 's3://publicaciones-sedesol/pub-publicacion/anio={}/'.format(year)
   raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).parquet(output_path_publicacion)
 
+  # clean
+  output_path_clean = 's3://publicaciones-sedesol/pub-cleaned/anio={}/'.format(year)
+  raw_data.write.mode('overwrite').partitionBy(*variables).parquet(output_path_clean)
