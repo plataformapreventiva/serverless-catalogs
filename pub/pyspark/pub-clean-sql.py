@@ -478,8 +478,8 @@ if __name__ == "__main__":
 
   # publicacion
   output_path_publicacion = 's3://publicaciones-sedesol/pub-publicacion/anio={}/'.format(year)
-  raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).parquet(output_path_publicacion)
+  raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).option("compression", "snappy").parquet(output_path_publicacion)
 
   # clean
   output_path_clean = 's3://publicaciones-sedesol/pub-cleaned/anio={}/'.format(year)
-  raw_data.write.mode('overwrite').partitionBy(*variables).parquet(output_path_clean)
+  raw_data.write.mode('overwrite').partitionBy(*variables).option("compression", "snappy").parquet(output_path_clean)
