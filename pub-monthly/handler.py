@@ -44,12 +44,11 @@ indexDoc = {
 def create_catalog(s3r):
     athena_client = boto3.client('athena',
                                  region_name = 'us-west-2')
-    b = s3r.Bucket('publicaciones-sedesol')
-    objects_to_delete = list(b.objects.filter(Prefix="catalogo_mensual"))
+    b = s3r.Bucket('serverless-pub')
+    objects_to_delete = list(b.objects.filter(Prefix="pub-monthly-catalog"))
 
     for obj in objects_to_delete:
-        if (obj.key != 'catalogo_mensual/'):
-            obj.delete()
+        obj.delete()
 
     query=("""SELECT anio,
                      numespago,
@@ -71,7 +70,7 @@ def create_catalog(s3r):
         },
         ResultConfiguration={
             'OutputLocation':
-            's3://publicaciones-sedesol/catalogo_mensual/',
+            's3://serverless-pub/pub-monthly-catalog/',
         }
     )
 
@@ -198,8 +197,8 @@ def catalog(event, context):
         # Save json result
         today = date.today()
         s3.put_object(Body= full_json_string,
-                Bucket = "publicaciones-sedesol",
-                Key = "elastic/catalogo_mensual.temporal_{}".format(today))
+                Bucket = "serverless-pub",
+                Key = "elastic/pub-monthly-catalog.temporal_{}".format(today))
 
     except Exception as e:
         raise e

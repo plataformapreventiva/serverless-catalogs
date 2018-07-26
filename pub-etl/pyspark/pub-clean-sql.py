@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import pdb
 import datetime
 import os
@@ -477,9 +478,9 @@ if __name__ == "__main__":
   raw_data = raw_data.join(broadcast(catalogo), raw_data.iduni == catalogo.iduni, 'left').drop(catalogo.iduni)
 
   # publicacion
-  output_path_publicacion = 's3://publicaciones-sedesol/pub-publicacion/anio={}/'.format(year)
+  output_path_publicacion = 's3://serverless-pub/pub-publicacion/anio={}/'.format(year)
   raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).option("compression", "snappy").parquet(output_path_publicacion)
 
   # clean
-  output_path_clean = 's3://publicaciones-sedesol/pub-cleaned/anio={}/'.format(year)
+  output_path_clean = 's3://serverless-pub/pub-cleaned/anio={}/'.format(year)
   raw_data.write.mode('overwrite').partitionBy(*variables).option("compression", "snappy").parquet(output_path_clean)
