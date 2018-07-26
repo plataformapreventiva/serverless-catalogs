@@ -22,7 +22,8 @@ def emr_clean(event, context):
     year = (re.findall('\d{4}', key))[0]
 
 	# Read emr config file
-	config = yaml.load('emr_config.yaml')
+    with open('emr_config.yaml', 'r') as f:
+        config = yaml.load(f)
 
     # script and bucket name for etl
     script_bucket_name = 'publicaciones-sedesol'
