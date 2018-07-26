@@ -136,8 +136,10 @@ indexDoc = {
                                        "fields": {"keyword": {"type": "keyword",
                                                               "ignore_above": 256} } },
             "tiene_perfil": {"type": "integer"},
-            "nom_ent": {"type": "text"},
-            "cve_ent": {"type": "text"}
+            "cve_ent": {"type": "text"},
+            "nom_ent": {"type": "text",
+                                       "fields": {"keyword": {"type": "keyword",
+                                                              "ignore_above": 256} } }
             }}},
         "settings": {
         "number_of_shards": 1,
