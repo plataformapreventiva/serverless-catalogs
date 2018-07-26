@@ -37,16 +37,35 @@ functions:
           rules:
             - suffix: .csv
 
-#  pub-monthly:
-#    handler: pub-monthly/wrap.handler
-#    package:
-#      include:
-#        - pub-monthly/**
-#
+  pub-monthly-gen:
+    handler: pub-monthly/wrap.handler
+    package:
+      include:
+        - pub-monthly/**
+      events:
+        - s3:
+            bucket: publicaciones-sedesol
+            event: s3:ObjectCreated:*
+            rules:
+                - suffix: pub-publicacion/
+
+  pub-monthly:
+    handler: pub-monthly/wrap.handler
+    package:
+      include:
+        - pub-monthly/**
+      events:
+        - s3:
+            bucket: publicaciones-sedesol
+            event: s3:ObjectCreated:*
+            rules:
+                - suffix: catalogo-mensual/*.csv
 
 custom:
   pyIndividually:
     wrap:cuaps-pub: cuaps-pub/handler.catalog
+    wrap:pub-monthly: pub-monthly/handler.catalog
+    wrap:pub-monthly-gen: pub-monthly/handler.create_catalog
     #wrap:pubFunnc: pub-monthly/handler.catalog_creation
     #  pythonRequirements:
     #    zip: true
