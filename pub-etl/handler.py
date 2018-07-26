@@ -15,7 +15,7 @@ from io import BytesIO
 from boto3.s3.transfer import S3Transfer
 
 def emr_clean(event, context):
-	# Get bucket and key from event
+	# Get bucket and keGy from event
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'])
 	# parse year
@@ -26,7 +26,7 @@ def emr_clean(event, context):
         config = yaml.load(f)
 
     # script and bucket name for etl
-    script_bucket_name = 'publicaciones-sedesol'
+    script_bucket_name = 'serverless-pub'
     script_name = 'scripts/pub-clean-sql.py'
     filename = 'pub-etl/pyspark/pub-clean-sql.py'
 
