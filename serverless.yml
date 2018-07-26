@@ -38,29 +38,29 @@ functions:
             - suffix: .csv
 
   pub-monthly-gen:
-    handler: pub-monthly/wrap.handler
+    handler: pub-monthly-gen/wrap.handler
     package:
       include:
         - pub-monthly/**
-      events:
-        - s3:
-            bucket: publicaciones-sedesol
-            event: s3:ObjectCreated:*
-            rules:
-                - prefix: pub-publicacion/
+    events:
+      - existingS3:
+          bucket: publicaciones-sedesol
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: pub-publicacion/
 
   pub-monthly:
     handler: pub-monthly/wrap.handler
     package:
       include:
         - pub-monthly/**
-      events:
-        - s3:
-            bucket: publicaciones-sedesol
-            event: s3:ObjectCreated:*
-            rules:
-                - prefix: catalogo-mensual/
-                - suffix: .csv
+    events:
+      - existingS3:
+          bucket: publicaciones-sedesol
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: catalogo-mensual/
+            - suffix: .csv
 
   pub-etl:
     handler: pub-etl/wrap.handler
@@ -109,6 +109,7 @@ resources:
 
 plugins:
   - serverless-python-individually
+  - serverless-plugin-existing-s3
     #- serverless-python-requirements
     #custom:
     #  pythonRequirements:
