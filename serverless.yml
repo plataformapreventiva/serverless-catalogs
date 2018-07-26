@@ -17,10 +17,14 @@ provider:
   memorySize: 3008 # Overwrite the default memory size. Default is 1024
   #role: arn:aws:iam::938975972071:role/service-role/PUB_catalog_role
   iamRoleStatements:
-    - Effect: "Allow"
-      Action:
-       - "s3:*"
-      Resource: "*"
+    -  Effect: "Allow"
+       Action:
+         - "s3:*"
+       Resource:
+         Fn::Join:
+           - ""
+           - - "arn:aws:s3:::publicaciones-sedesol"
+           - - "arn:aws:s3:::*"
   environment:
     HOST_ES: "${self:custom.secrets.HOST_ES}"
 
@@ -45,7 +49,8 @@ functions:
     events:
       - existingS3:
           bucket: publicaciones-sedesol
-          event: s3:ObjectCreated:*
+          events:
+            - s3:ObjectCreated:*
           rules:
             - prefix: pub-publicacion/
 
@@ -57,7 +62,8 @@ functions:
     events:
       - existingS3:
           bucket: publicaciones-sedesol
-          event: s3:ObjectCreated:*
+          events:
+            - s3:ObjectCreated:*
           rules:
             - prefix: catalogo-mensual/
             - suffix: .csv
