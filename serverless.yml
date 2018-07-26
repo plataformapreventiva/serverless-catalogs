@@ -62,12 +62,25 @@ functions:
             - prefix: catalogo-mensual/
             - suffix: .csv
 
+  pub-etl:
+    handler: pub-etl/wrap.handler
+    package:
+      include:
+        - pub-monthly/**
+    events:
+      - s3:
+          bucket: pub-raw
+          event: s3:ObjectCreated:*
+          rules:
+              - prefix: decoded_txt/
+              - suffix: .txt
+
 custom:
   pyIndividually:
     wrap:cuaps-pub: cuaps-pub/handler.catalog
     wrap:pub-monthly: pub-monthly/handler.catalog
     wrap:pub-monthly-gen: pub-monthly/handler.create_catalog
-    #wrap:pubFunnc: pub-monthly/handler.catalog_creation
+    wrap:pub-etl: pub-etl/handler.emr_clean
     #  pythonRequirements:
     #    zip: true
     #    dockerizePip: non-linux
