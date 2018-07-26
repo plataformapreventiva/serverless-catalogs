@@ -72,7 +72,7 @@ functions:
           bucket: pub-raw
           event: s3:ObjectCreated:*
           rules:
-              - prefix: decoded_txt
+              - prefix: decoded_txt/
               - suffix: .txt
 
 custom:
@@ -80,7 +80,7 @@ custom:
     wrap:cuaps-pub: cuaps-pub/handler.catalog
     wrap:pub-monthly: pub-monthly/handler.catalog
     wrap:pub-monthly-gen: pub-monthly/handler.create_catalog
-    wrap:pub-etl: pub-etl/handler.spark
+    wrap:pub-etl: pub-etl/handler.emr_clean
     #  pythonRequirements:
     #    zip: true
     #    dockerizePip: non-linux
