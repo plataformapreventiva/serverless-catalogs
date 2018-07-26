@@ -47,7 +47,7 @@ functions:
             bucket: publicaciones-sedesol
             event: s3:ObjectCreated:*
             rules:
-                - suffix: pub-publicacion/
+                - prefix: pub-publicacion/
 
   pub-monthly:
     handler: pub-monthly/wrap.handler
@@ -59,7 +59,8 @@ functions:
             bucket: publicaciones-sedesol
             event: s3:ObjectCreated:*
             rules:
-                - suffix: catalogo-mensual/*.csv
+                - prefix: catalogo-mensual/
+                - suffix: .csv
 
 custom:
   pyIndividually:
