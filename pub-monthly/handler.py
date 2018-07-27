@@ -44,7 +44,7 @@ indexDoc = {
 def create_catalog(s3r):
     athena_client = boto3.client('athena',
                                  region_name = 'us-west-2')
-    b = s3r.Bucket('serverless-pub')
+    b = s3r.Bucket('serverlesspub')
     objects_to_delete = list(b.objects.filter(Prefix="pub-monthly-catalog"))
 
     for obj in objects_to_delete:
@@ -70,7 +70,7 @@ def create_catalog(s3r):
         },
         ResultConfiguration={
             'OutputLocation':
-            's3://serverless-pub/pub-monthly-catalog/',
+            's3://serverlesspub/pub-monthly-catalog/',
         }
     )
 
@@ -197,7 +197,7 @@ def catalog(event, context):
         # Save json result
         today = date.today()
         s3.put_object(Body= full_json_string,
-                Bucket = "serverless-pub",
+                Bucket = "serverlesspub",
                 Key = "elastic/pub-monthly-catalog.temporal_{}".format(today))
 
     except Exception as e:
