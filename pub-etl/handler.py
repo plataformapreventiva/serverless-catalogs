@@ -26,7 +26,7 @@ def emr_clean(event, context):
         config = yaml.load(f)
 
     # script and bucket name for etl
-    script_bucket_name = 'serverless-pub'
+    script_bucket_name = 'serverlesspub'
     script_name = 'scripts/pub-clean-sql.py'
     filename = 'pub-etl/pyspark/pub-clean-sql.py'
 
