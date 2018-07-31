@@ -35,6 +35,7 @@ SCHEMA_PUBLICATION = [
     'cdprograma',
     'cdsexo',
     'cdtipobeneficio',
+    'nombretipobeneficio',
     'cveent',
     'cveentpago',
     'cvemuni',
@@ -73,6 +74,7 @@ SCHEMA_FULL = [
     'cdprograma',
     'cdsexo',
     'cdtipobeneficio',
+    'nombretipobeneficio',
     'cdtipoexpedicion',
     'cveent',
     'cveentpago',
@@ -121,7 +123,7 @@ SCHEMA_FULL = [
 
 def make_programatipo(programa, padron, beneficio):
     if not beneficio:
-        beneficio = '9999'
+        beneficio = 'no_disponible'
     return '{0}_{1}_{2}'.format(programa, padron, beneficio)
 
 make_programatipo_udf = udf(lambda x,y,z: make_programatipo(x,y,z), StringType())
@@ -317,9 +319,9 @@ def name_benefit(benefit_type):
         elif benefit_int == 6:
             benefit_name = 'indirecto'
         else:
-            benefit_name = None
+            benefit_name = 'otro'
     except:
-        benefit_name = None
+        benefit_name = 'no_disponible'
     return benefit_name
 
 name_benefit_udf = udf(lambda z: name_benefit(z), StringType())
@@ -463,7 +465,7 @@ if __name__ == "__main__":
   # clean type of benefit
   raw_data = raw_data.withColumn('nombretipobeneficio', name_benefit_udf(col('cdtipobeneficio')))
   # Add new columns for join
-  raw_data = raw_data.withColumn('programatipo', make_programatipo_udf(col('cdprograma'),col('cdpadron'),col('cdtipobeneficio')))
+  raw_data = raw_data.withColumn('programatipo', make_programatipo_udf(col('cdprograma'),col('cdpadron'),col('nombretipobeneficio')))
   raw_data = raw_data.withColumn('iduni',
   make_iduni_udf(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
   print("done")
