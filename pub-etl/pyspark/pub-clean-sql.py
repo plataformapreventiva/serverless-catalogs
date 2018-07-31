@@ -485,7 +485,7 @@ if __name__ == "__main__":
     # clean type of benefit
     raw_data = raw_data.withColumn('nombretipobeneficio', name_benefit_udf(col('cdtipobeneficio')))
     # Add new columns for join
-    raw_data = raw_data.withColumn('programatipo', make_programatipo_udf(col('cdprograma'),col('cdpadron'),col('cdtipobeneficio')))
+    raw_data = raw_data.withColumn('programatipo', make_programatipo_udf(col('cdprograma'),col('cdpadron'),col('cnombretipobeneficio')))
     raw_data = raw_data.withColumn('iduni', make_iduni_udf(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
     print("done")
     # Read catalogo de programas
