@@ -417,72 +417,101 @@ def read_catalog(catalogo_file):
             .load(catalogo_file, schema = customSchema)
     return df
 
+def read_municipios(municipios, estados):
+    municipios = sqlContext.read.format('com.databricks.spark.csv') \
+        .option("header", 'true') \
+        .option("delimiter", "|") \
+        .load(municipios)\
+        .withColumnRenamed("NOMGEO", "nommuni")\
+        .withColumnRenamed("CVE_ENT", "cveent")\
+        .withColumnRenamed("CVEGEO", "cvemuni")\
+        .select("cveent","cvemuni", "nommuni")
+    estados = sqlContext.read.format('com.databricks.spark.csv') \
+        .option("header", 'true') \
+        .option("delimiter", "|") \
+        .load(estados)\
+        .withColumnRenamed("CVE_ENT", "cveent")\
+        .withColumnRenamed("NOM_ENT", "noment")\
+        .select("cveent","noment")
+    municipios = municipios.join(broadcast(estados), municipios.cveent == estados.cveent, 'left').drop(estados.cveent)
+    return municipios
+
 if __name__ == "__main__":
     # Read pub
-    year = '2017'
+    # year = '2017'
+    variables = ['numespago']
+    # Read raw pub
+    print("reading")
 
- variables = ['numespago']
-  # Read raw pub
-  print("reading")
+    # Raw txt data path
+    input_path = 's3://pub-raw/glue_txt/'
+    raw_data = read_pub(year, input_path, 1)
 
-  # Raw txt data path
-  input_path = 's3://pub-raw/glue_txt/'
-  raw_data = read_pub(year, input_path, 1)
+    print("done reading")
+    # clean pub
+    print("start cleaning")
+    # clean year:
+    raw_data = raw_data.withColumn('anio', clean_integer_udf(col('anio')))
+    # clean months:
+    raw_data = raw_data.withColumn('mescorresp', corresp_month_udf(col('periodo')))
+    raw_data = raw_data.withColumn('numespago',
+    clean_month_udf(col('numespago'), col('mescorresp')))
+    # clean age
+    raw_data = raw_data.withColumn('age', to_age_udf(col('fhnacimiento'),
+                          col('anio'),
+                          col('mescorresp')))
+    raw_data = raw_data.withColumn('categoriaedad', gen_age_category_udf(col('age')))
+    # clean name and lastnames
+    raw_data = raw_data.withColumn('nbprimerap', clean_name_udf(col('nbprimerap'),col('age')))
+    raw_data = raw_data.withColumn('nbsegundoap', clean_name_udf(col('nbsegundoap'),col('age')))
+    raw_data = raw_data.withColumn('nbnombre', clean_name_udf(col('nbnombre'),col('age')))
+    # clean_gender
+    raw_data = raw_data.withColumn('cdsexo', clean_gender_udf(col('cdsexo')))
+    # clean origin
+    raw_data = raw_data.withColumn('origen', clean_origin_udf(col('nborigen')))
+    # clean money
+    raw_data = raw_data.withColumn('nuimpmonetario', clean_integer_udf(col('nuimpmonetario')))
+    # paymente location
+    raw_data = raw_data.withColumn('cveentpago', clean_edo_udf(col('cdentpago')))
+    raw_data = raw_data.withColumn('cvemunipago',
+    clean_muni_udf(col('cdmunpago'),col('cveentpago')))
+    raw_data = raw_data.withColumn('cvelocpago', clean_loc_udf(col('cdlocpago')))
+    # Person location
+    raw_data = raw_data.withColumnRenamed("cveent","cveedo").withColumnRenamed("noment","nomedo")
+    raw_data = raw_data.withColumn('cveent', clean_edo_udf(col('cveedo')))
+    raw_data = raw_data.withColumn('cvemuni', clean_muni_udf(col('cvemun'),col('cveent')))
+    raw_data = raw_data.withColumn('cveloc', clean_loc_udf(col('cveloc')))
 
-  print("done reading")
-  # clean pub
-  print("start cleaning")
-  # clean year:
-  raw_data = raw_data.withColumn('anio', clean_integer_udf(col('anio')))
-  # clean months:
-  raw_data = raw_data.withColumn('mescorresp', corresp_month_udf(col('periodo')))
-  raw_data = raw_data.withColumn('numespago',
-      clean_month_udf(col('numespago'), col('mescorresp')))
-  # clean age
-  raw_data = raw_data.withColumn('age', to_age_udf(col('fhnacimiento'),
-                            col('anio'),
-                            col('mescorresp')))
-  raw_data = raw_data.withColumn('categoriaedad', gen_age_category_udf(col('age')))
-  # clean name and lastnames
-  raw_data = raw_data.withColumn('nbprimerap', clean_name_udf(col('nbprimerap'),col('age')))
-  raw_data = raw_data.withColumn('nbsegundoap', clean_name_udf(col('nbsegundoap'),col('age')))
-  raw_data = raw_data.withColumn('nbnombre', clean_name_udf(col('nbnombre'),col('age')))
-  # clean_gender
-  raw_data = raw_data.withColumn('cdsexo', clean_gender_udf(col('cdsexo')))
-  # clean origin
-  raw_data = raw_data.withColumn('origen', clean_origin_udf(col('nborigen')))
-  # clean money
-  raw_data = raw_data.withColumn('nuimpmonetario', clean_integer_udf(col('nuimpmonetario')))
-  # paymente location
-  raw_data = raw_data.withColumn('cveentpago', clean_edo_udf(col('cdentpago')))
-  raw_data = raw_data.withColumn('cvemunipago',
-      clean_muni_udf(col('cdmunpago'),col('cveentpago')))
-  raw_data = raw_data.withColumn('cvelocpago', clean_loc_udf(col('cdlocpago')))
-  # Person location
-  raw_data = raw_data.withColumn('cveedo', clean_edo_udf(col('cveent')))
-  raw_data = raw_data.withColumn('cvemuni', clean_muni_udf(col('cveent'), col('cvemun')))
-  raw_data = raw_data.withColumn('cveloc', clean_loc_udf(col('cveloc')))
-  # clean type of benefit
-  raw_data = raw_data.withColumn('nombretipobeneficio', name_benefit_udf(col('cdtipobeneficio')))
-  # Add new columns for join
-  raw_data = raw_data.withColumn('programatipo', make_programatipo_udf(col('cdprograma'),col('cdpadron'),col('nombretipobeneficio')))
-  raw_data = raw_data.withColumn('iduni',
-  make_iduni_udf(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
-  print("done")
-  # Read catalogo
-  catalogo_file = 's3://pub-raw/diccionarios/catalogo_programas.csv'
-  catalogo = read_catalog(catalogo_file)
-  catalogo_columns = ['anio', 'iduni', 'nombresubp1','nombreprograma','nbdependencia', 'nbdepencorto']
-  print("filtering")
-  catalogo = catalogo.select(*catalogo_columns).filter(catalogo.anio == year)
-  catalogo = catalogo.withColumnRenamed("anio", "anio_catalogo")
-  print("join")
-  raw_data = raw_data.join(broadcast(catalogo), raw_data.iduni == catalogo.iduni, 'left').drop(catalogo.iduni)
+    # clean type of benefit
+    raw_data = raw_data.withColumn('nombretipobeneficio', name_benefit_udf(col('cdtipobeneficio')))
+    # Add new columns for join
+    raw_data = raw_data.withColumn('programatipo', make_programatipo_udf(col('cdprograma'),col('cdpadron'),col('nombretipobeneficio')))
+    raw_data = raw_data.withColumn('iduni', make_iduni_udf(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
+    print("done")
+    # Read catalogo de programas
+    catalogo_file = 's3://pub-raw/diccionarios/catalogo_programas.csv'
+    catalogo = read_catalog(catalogo_file)
+    catalogo_columns = ['anio', 'iduni', 'nombresubp1','nombreprograma','nbdependencia', 'nbdepencorto']
+    print("filtering")
+    catalogo = catalogo.select(*catalogo_columns).filter(catalogo.anio == year)
+    catalogo = catalogo.withColumnRenamed("anio", "anio_catalogo")
+    print("join")
+    raw_data = raw_data.join(broadcast(catalogo), raw_data.iduni == catalogo.iduni, 'left').drop(catalogo.iduni)
 
-  # publicacion
-  output_path_publicacion = 's3://serverlesspub/pub-publicacion/anio={}/'.format(year)
-  raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).option("compression", "snappy").parquet(output_path_publicacion)
+    # Read catalogo de municipios
+    municipios = read_municipios("s3://dpa-plataforma-preventiva/etl/geoms_municipios/raw/2018-a-geoms_municipios.csv",
+                            "s3://dpa-plataforma-preventiva/etl/geoms_estados/raw/2017-a-geoms_estados.csv")
+    raw_data = raw_data.join(broadcast(municipios), raw_data.cvemuni == municipios.cvemuni, 'left')\
+                   .drop(municipios.cvemuni)\
+                   .drop(raw_data.cveent)
 
-  # clean
-  output_path_clean = 's3://serverlesspub/pub-cleaned/anio={}/'.format(year)
-  raw_data.write.mode('overwrite').partitionBy(*variables).option("compression", "snappy").parquet(output_path_clean)
+
+    #raw_data.columns
+    print("Escribiendo publicacion year:" + year)
+    output_path_publicacion = 's3://publicaciones-sedesol/pub-publicacion/anio={}/'.format(year)
+    raw_data.select(SCHEMA_PUBLICATION).write.mode('overwrite').partitionBy(*variables).parquet(output_path_publicacion)
+
+    #clean
+    print("Escribiendo clean year:" + year)
+    output_path_clean = 's3://publicaciones-sedesol/pub-cleaned/anio={}/'.format(year)
+    raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).parquet(output_path_clean)
