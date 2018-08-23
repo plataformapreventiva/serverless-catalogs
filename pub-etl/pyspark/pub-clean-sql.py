@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+ACCESS_KEY = "AKIAJM3IHL7NS6OD3TNQ"
+SECRET_KEY = "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"
+sc._jsc.hadoopConfiguration().set("fs.s3n.awsAccessKeyId", ACCESS_KEY)
+sc._jsc.hadoopConfiguration().set("fs.s3n.awsSecretAccessKey", SECRET_KEY)
+  
+  
 import pdb
 import datetime
 import os
@@ -211,7 +217,7 @@ def clean_muni(muni, edo):
         return None
     if (edo_int <= 32) & (edo_int > 0) & (muni_int < 999) & (muni_int > 0):
         cve_muni = "{ent}{mun}".format(ent=str(edo_int).zfill(2),
-                                       mun=str(muni_int).zfill(4))
+                                       mun=str(muni_int).zfill(3))
         return cve_muni
 
 clean_muni_udf = udf(lambda y,z: clean_muni(y,z), StringType())
@@ -416,6 +422,26 @@ def read_catalog(catalogo_file):
             .option("delimiter", "|") \
             .load(catalogo_file, schema = customSchema)
     return df
+
+def read_municipios(municipios, estados):
+    municipios = sqlContext.read.format('com.databricks.spark.csv') \
+        .option("header", 'true') \
+        .option("delimiter", "|") \
+        .load(municipios)\
+        .withColumnRenamed("NOMGEO", "nommuni")\
+        .withColumnRenamed("CVE_ENT", "cveent")\
+        .withColumnRenamed("CVEGEO", "cvemuni")\
+        .select("cveent","cvemuni", "nommuni")
+    estados = sqlContext.read.format('com.databricks.spark.csv') \
+        .option("header", 'true') \
+        .option("delimiter", "|") \
+        .load(estados)\
+        .withColumnRenamed("CVE_ENT", "cveent")\
+        .withColumnRenamed("NOM_ENT", "noment")\
+        .select("cveent","noment")
+    municipios = municipios.join(broadcast(estados), municipios.cveent == estados.cveent, 'left').drop(estados.cveent)
+    return municipios
+
 
 if __name__ == "__main__":
 
