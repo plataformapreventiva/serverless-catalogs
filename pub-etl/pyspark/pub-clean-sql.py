@@ -1,10 +1,4 @@
 #!/usr/bin/env python
-ACCESS_KEY = "AKIAJM3IHL7NS6OD3TNQ"
-SECRET_KEY = "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"
-sc._jsc.hadoopConfiguration().set("fs.s3n.awsAccessKeyId", ACCESS_KEY)
-sc._jsc.hadoopConfiguration().set("fs.s3n.awsSecretAccessKey", SECRET_KEY)
-  
-  
 import pdb
 import datetime
 import os
@@ -228,7 +222,7 @@ def clean_loc(loc):
         loc_int = int(loc)
     except:
         return None
-    if (loc_int > 9999) & (loc_int > 0):
+    if (loc_int < 9999) & (loc_int > 0):
         cve_loc = str(loc_int).zfill(4)
         return cve_loc
 
@@ -281,11 +275,13 @@ def clean_month(raw_month, new_month):
         int_month = int(raw_month)
     except:
         int_month = None
-
-    if not int_month:
-        int_month = new_month
-    if (int_month >= 1) & (int_month <= 12):
-        return int_month
+    try:
+        if int_month:
+            int_month = new_month
+        if (int_month >= 1) & (int_month <= 12):
+            return int_month
+    except:
+        int_month = None
 
 clean_month_udf = udf(lambda y,z: clean_month(y,z), IntegerType())
 
@@ -442,13 +438,11 @@ def read_municipios(municipios, estados):
     municipios = municipios.join(broadcast(estados), municipios.cveent == estados.cveent, 'left').drop(estados.cveent)
     return municipios
 
-
 if __name__ == "__main__":
 
     for year in range(2011,2018)
-        # Read pub
-        year = str(year) # '2017'
 
+        year = str(year)
         variables = ['numespago']
         # Read raw pub
         print("reading")
@@ -456,22 +450,24 @@ if __name__ == "__main__":
         # Raw txt data path
         input_path = 's3://pub-raw/glue_txt/'
         raw_data = read_pub(year, input_path, 1)
-        print("done reading")
 
-        ## Clean
+        print("done reading")
+        # clean pub
         print("start cleaning")
-        #clean newid
+
+        # clean newid
         raw_data = raw_data.withColumn('newid', clean_integer_udf(col('newid')))
         # clean year:
+
         raw_data = raw_data.withColumn('anio', clean_integer_udf(col('anio')))
         # clean months:
         raw_data = raw_data.withColumn('mescorresp', corresp_month_udf(col('periodo')))
         raw_data = raw_data.withColumn('numespago',
-          clean_month_udf(col('numespago'), col('mescorresp')))
+        clean_month_udf(col('numespago'), col('mescorresp')))
         # clean age
         raw_data = raw_data.withColumn('age', to_age_udf(col('fhnacimiento'),
-                                col('anio'),
-                                col('mescorresp')))
+                            col('anio'),
+                            col('mescorresp')))
         raw_data = raw_data.withColumn('categoriaedad', gen_age_category_udf(col('age')))
         # clean name and lastnames
         raw_data = raw_data.withColumn('nbprimerap', clean_name_udf(col('nbprimerap'),col('age')))
@@ -486,78 +482,77 @@ if __name__ == "__main__":
         # paymente location
         raw_data = raw_data.withColumn('cveentpago', clean_edo_udf(col('cdentpago')))
         raw_data = raw_data.withColumn('cvemunipago',
-          clean_muni_udf(col('cdmunpago'),col('cveentpago')))
+        clean_muni_udf(col('cdmunpago'),col('cveentpago')))
         raw_data = raw_data.withColumn('cvelocpago', clean_loc_udf(col('cdlocpago')))
         # Person location
-        raw_data = raw_data.withColumn('cveedo', clean_edo_udf(col('cveent')))
-        raw_data = raw_data.withColumn('cvemuni', clean_muni_udf(col('cveent'), col('cvemun')))
+        raw_data = raw_data.withColumnRenamed("cveent","cveedo").withColumnRenamed("noment","nomedo")
+        raw_data = raw_data.withColumn('cveent', clean_edo_udf(col('cveedo')))
+        raw_data = raw_data.withColumn('cvemuni', clean_muni_udf(col('cvemun'),col('cveent')))
         raw_data = raw_data.withColumn('cveloc', clean_loc_udf(col('cveloc')))
+
         # clean type of benefit
         raw_data = raw_data.withColumn('nombretipobeneficio', name_benefit_udf(col('cdtipobeneficio')))
         # Add new columns for join
-        raw_data = raw_data.withColumn('programatipo',
-                make_programatipo_udf(col('cdprograma'),col('cdpadron'),col('nombretipobeneficio')))
-        raw_data = raw_data.withColumn('iduni',
-        make_iduni_udf(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
+        raw_data = raw_data.withColumn('programatipo', make_programatipo_udf(col('cdprograma'),col('cdpadron'),col('nombretipobeneficio')))
+        raw_data = raw_data.withColumn('iduni', make_iduni_udf(col('origen'),col('cddependencia'),col('cdprograma'),col('cdpadron'),col('anio')))
         print("done")
 
-        # Add location metadata
+        # Read catalogo de programas
         catalogo_file = 's3://pub-raw/diccionarios/catalogo_programas.csv'
         catalogo = read_catalog(catalogo_file)
         catalogo_columns = ['anio', 'iduni', 'nombresubp1','nombreprograma','nbdependencia', 'nbdepencorto']
+
         print("filtering")
         catalogo = catalogo.select(*catalogo_columns).filter(catalogo.anio == year)
         catalogo = catalogo.withColumnRenamed("anio", "anio_catalogo")
+
         print("join")
-        raw_data = raw_data.join(broadcast(catalogo),
-                raw_data.iduni == catalogo.iduni, 'left').drop(catalogo.iduni)
+        raw_data = raw_data.join(broadcast(catalogo), raw_data.iduni == catalogo.iduni, 'left').drop(catalogo.iduni)
 
-        # Clean programs
-        # Prospera con Corresponsabilidad
-        raw_data = raw_data.withColumn('nuimpmonetario',
-                when((col("cdprograma") == 'S072') &\
-                        (col("cdpadron")=='S072') &\
-                        (col("cdbeneficio") == '60') &\
-                        (col("cdtipobeneficio") == '6'),
-                        0).otherwise(col("nuimpmonetario")))
+        # Read catalogo de municipios
+        municipios = read_municipios("s3://dpa-plataforma-preventiva/etl/geoms_municipios/raw/2018-a-geoms_municipios.csv",
+                              "s3://dpa-plataforma-preventiva/etl/geoms_estados/raw/2017-a-geoms_estados.csv")
 
-        # Prospera
-        raw_data = raw_data.withColumn('nuimpmonetario',
-                when((col("cdprograma") == 'S072') &\
-                        (col("cdpadron") == '0377') &\
-                        (col("cdbeneficio") == '60' ),
-                        0).otherwise(col("nuimpmonetario")))
+        raw_data = raw_data.join(broadcast(municipios), raw_data.cvemuni == municipios.cvemuni, 'left')\
+                     .drop(municipios.cvemuni)\
+                     .drop(raw_data.cveent)
 
-        # Pei Programa Estancias Infantiles
+        #### LIMPIEZA DE MONTOS
+        # PROSPERA CON CORRESPONSABILIDAD
         raw_data = raw_data.withColumn('nuimpmonetario',
-                when((col("cdprograma") == 'S174') &\
-                        (col("intitular") == '0'),
-                        0).otherwise(col("nuimpmonetario")))
+                                     when((col("cdprograma") == 'S072') & (col("cdpadron")=='S072') & (col("cdbeneficio") == '60') & (col("cdtipobeneficio") == '6'),
+                                          0).otherwise(col("nuimpmonetario")))
 
-        # Sevije Seguro de Vida para Jefas de Familia
+        # PROSPERA
         raw_data = raw_data.withColumn('nuimpmonetario',
-                when((col("cdprograma") == 'S241')  &\
-                        (col("cdbeneficio") == '1'),
-                0).otherwise(col("nuimpmonetario")))
-        raw_data = raw_data.withColumn('nuimpmonetario',
-                when((col("cdprograma") == 'S241')  &\
-                        (col("cdpadron") == '0567')  &\
-                        (col("cdpadron") == '0568'),
-                0).otherwise(col("nuimpmonetario")))
+                                     when((col("cdprograma") == 'S072') & (col("cdpadron") == '0377') & (col("cdbeneficio") == '60' ) ,
+                                          0).otherwise(col("nuimpmonetario")))
 
-        # Filter Programs
-        # Liconsa
+        # PEI
+        #df3 = raw_data.filter((col("cdprograma") == 'S174') & (col("intitular") != '0'))
+        raw_data = raw_data.withColumn('nuimpmonetario',
+                                     when((col("cdprograma") == 'S174') & (col("cdtipobeneficio") == '3'),
+                                          0).otherwise(col("nuimpmonetario")))
+
+        # SEVIJE
+        #df4 = raw_data.filter((col("cdprograma") == 'S241') & (col("cdpadron") != '0567')  & (col("cdpadron") != '0568') & (col("cdbeneficio") != '1'))
+        raw_data = raw_data.withColumn('nuimpmonetario',
+                                     when((col("cdprograma") == 'S241')  & (col("cdbeneficio") == '1'),
+                                          0).otherwise(col("nuimpmonetario")))
+        raw_data = raw_data.withColumn('nuimpmonetario',
+                                     when((col("cdprograma") == 'S241')  & (col("cdpadron") == '0567')  & (col("cdpadron") == '0568'),
+                                          0).otherwise(col("nuimpmonetario")))
+
+        #### FILTROS DE BENEFICIARIOS
         cve_list = ["S052"]
-        raw_data = raw_data.filter((~raw_data.cdprograma.isin(cve_list)) |\
-                (col("cdprograma") == 'S052') & (col("cdbeneficio") != '60'))
+        # LICONSA
+        raw_data = raw_data.filter((~raw_data.cdprograma.isin(cve_list)) | (col("cdprograma") == 'S052') & (col("cdbeneficio") != '60'))
 
-        # publicacion
-        output_path_publicacion = 's3://serverlesspub/pub-publicacion/anio={}/'.format(year)
-        raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).\
-                option("compression", "snappy").parquet(output_path_publicacion)
+        print("Escribiendo publicacion year:" + year)
+        output_path_publicacion = 's3://publicaciones-sedesol/pub-publicacion/anio={}/'.format(year)
+        raw_data.select(SCHEMA_PUBLICATION).write.mode('overwrite').partitionBy(*variables).parquet(output_path_publicacion)
 
-        # clean
-        output_path_clean = 's3://serverlesspub/pub-cleaned/anio={}/'.format(year)
-        raw_data.write.mode('overwrite').partitionBy(*variables).\
-                option("compression", "snappy").parquet(output_path_clean)
-
+        #clean
+        print("Escribiendo clean year:" + year)
+        output_path_clean = 's3://publicaciones-sedesol/pub-cleaned/anio={}/'.format(year)
+        raw_data.select(SCHEMA_FULL).write.mode('overwrite').partitionBy(*variables).parquet(output_path_clean)
